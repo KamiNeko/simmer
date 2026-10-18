@@ -1,7 +1,12 @@
-from datetime import datetime
-from typing import Literal
+from datetime import UTC, datetime
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, HttpUrl, field_validator
+
+# SQLite drops the timezone, so stored values come back naive; they are always UTC.
+UTCDateTime = Annotated[
+    datetime, AfterValidator(lambda d: d if d.tzinfo else d.replace(tzinfo=UTC))
+]
 
 
 class ORMModel(BaseModel):
@@ -17,7 +22,7 @@ class UserOut(ORMModel):
     display_name: str
     role: Literal["admin", "member"]
     unit_system: Literal["metric", "us", "original"]
-    created_at: datetime
+    created_at: UTCDateTime
 
 
 class LoginIn(BaseModel):
@@ -131,8 +136,8 @@ class RecipeSummary(ORMModel):
     tags: list[str]
     author: AuthorOut | None
     ingredient_preview: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
     can_edit: bool = False
 
 

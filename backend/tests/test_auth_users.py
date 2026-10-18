@@ -64,3 +64,8 @@ def test_change_password_and_preferences(admin):
     login(admin, "alex", "another-pass")
     updated = admin.patch("/api/auth/me", json={"unit_system": "us"})
     assert updated.json()["unit_system"] == "us"
+
+
+def test_timestamps_are_utc(admin):
+    created_at = admin.get("/api/auth/me").json()["user"]["created_at"]
+    assert created_at.endswith(("Z", "+00:00"))

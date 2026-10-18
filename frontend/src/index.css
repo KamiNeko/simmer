@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/figtree";
+@import "@fontsource/jetbrains-mono/400.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+  --background: #f7f6f4;
+  --foreground: #1f1f1f;
+  --sidebar: #efeeeb;
+  --panel: #fbfaf9;
+  --card: #ffffff;
+  --card-foreground: #1f1f1f;
+  --popover: #ffffff;
+  --popover-foreground: #1f1f1f;
+  --primary: #e0623f;
+  --primary-foreground: #ffffff;
+  --secondary: #ebe9e5;
+  --secondary-foreground: #1f1f1f;
+  --muted: #ebe9e5;
+  --muted-foreground: #6f6c68;
+  --accent: #e6e3de;
+  --accent-foreground: #1f1f1f;
+  --destructive: #d23b3b;
+  --border: #e2dfda;
+  --input: #dcd8d2;
+  --ring: #e0623f;
+}
+
+.dark {
+  --background: #1c1c1c;
+  --foreground: #e8e6e3;
+  --sidebar: #1f1f1f;
+  --panel: #262626;
+  --card: #2c2c2c;
+  --card-foreground: #e8e6e3;
+  --popover: #2a2a2a;
+  --popover-foreground: #e8e6e3;
+  --primary: #e8714f;
+  --primary-foreground: #1c1c1c;
+  --secondary: #303030;
+  --secondary-foreground: #e8e6e3;
+  --muted: #2e2e2e;
+  --muted-foreground: #9d9a96;
+  --accent: #333333;
+  --accent-foreground: #e8e6e3;
+  --destructive: #e05252;
+  --border: #353535;
+  --input: #3a3a3a;
+  --ring: #e8714f;
+}
+
+@theme inline {
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
