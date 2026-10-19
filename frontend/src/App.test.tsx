@@ -133,6 +133,36 @@ describe("admin pages", () => {
   });
 });
 
+describe("menu drawer on small screens", () => {
+  it("is out of reach while closed, takes the focus when opened and closes on Escape", async () => {
+    fakeApi({});
+    renderApp("/");
+    const button = await screen.findByRole("button", { name: "Open menu" });
+    const drawer = document.getElementById("app-menu")!;
+    expect(drawer).toHaveAttribute("inert");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(button);
+    expect(drawer).not.toHaveAttribute("inert");
+    expect(screen.getByRole("dialog", { name: "Menu" })).toBe(drawer);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(drawer).toContainElement(document.activeElement as HTMLElement);
+
+    await userEvent.keyboard("{Escape}");
+    expect(drawer).toHaveAttribute("inert");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
+  });
+
+  it("stays in place on wide screens", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("min-width"), addEventListener() {}, removeEventListener() {} }));
+    fakeApi({});
+    renderApp("/");
+    await screen.findByRole("button", { name: "Open menu" });
+    expect(document.getElementById("app-menu")).not.toHaveAttribute("inert");
+  });
+});
+
 describe("history", () => {
   it("goes back to the recipe after saving an edit, rather than adding it again", async () => {
     const soup = recipe();

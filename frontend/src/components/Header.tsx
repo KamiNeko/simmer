@@ -32,7 +32,7 @@ function useCrumb(): string | null {
   return null;
 }
 
-export function Header({ onMenu }: { onMenu: () => void }) {
+export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuOpen?: boolean }) {
   const { user, isAdmin, refresh } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
@@ -69,7 +69,15 @@ export function Header({ onMenu }: { onMenu: () => void }) {
 
   return (
     <header className="bg-sidebar flex h-16 shrink-0 items-center gap-3 border-b px-4">
-      <Button variant="ghost" size="icon-sm" className="lg:hidden" onClick={onMenu} aria-label="Open menu">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="lg:hidden"
+        onClick={onMenu}
+        aria-label="Open menu"
+        aria-expanded={menuOpen}
+        aria-controls="app-menu"
+      >
         <Menu />
       </Button>
 
