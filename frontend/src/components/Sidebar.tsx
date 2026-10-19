@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Hash, Plus, Sparkles, User as UserIcon, Users } from "lucide-react";
+import { BookOpen, Hash, Plus, ShoppingBasket, Sparkles, User as UserIcon, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
@@ -41,6 +41,8 @@ export function Sidebar() {
   const tag = params.get("tag");
   const mine = params.get("mine") === "1";
   const tags = useQuery({ queryKey: ["tags"], queryFn: api.tags });
+  const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
+  const onList = shopping.data ? shopping.data.recipes.length + shopping.data.extras.filter((x) => !x.checked).length : undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -52,12 +54,17 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-6 overflow-y-auto p-3">
         <div className="space-y-0.5">
-          <NavItem to="/" active={!tag && !mine && !pathname.startsWith("/admin")} icon={<BookOpen />}>
+          <NavItem to="/" active={!tag && !mine && !pathname.startsWith("/admin") && pathname !== "/shopping"} icon={<BookOpen />}>
             All Recipes
           </NavItem>
           {user && (
             <NavItem to="/?mine=1" active={mine} icon={<UserIcon />}>
               My Recipes
+            </NavItem>
+          )}
+          {user && (
+            <NavItem to="/shopping" active={pathname === "/shopping"} icon={<ShoppingBasket />} count={onList || undefined}>
+              Shopping list
             </NavItem>
           )}
         </div>

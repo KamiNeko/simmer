@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, ChefHat, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, Timer, Trash2, User, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChefHat, Check, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, ShoppingBasket, Timer, Trash2, User, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,6 +44,18 @@ export function RecipeDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const recipe = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!) });
   const view = useRecipeView(recipe.data);
+  const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
+  const listed = shopping.data?.recipes.find((e) => e.recipe.slug === slug);
+  const addToList = useMutation({
+    mutationFn: () => api.shoppingPutRecipe(slug!, view.servings),
+    onSuccess: (data) => {
+      client.setQueryData(["shopping"], data);
+      toast.success(listed ? "Shopping list updated" : "Added to your shopping list", {
+        action: { label: "Open list", onClick: () => navigate("/shopping") },
+      });
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const remove = useMutation({
     mutationFn: () => api.deleteRecipe(slug!),
@@ -156,7 +168,21 @@ export function RecipeDetail() {
 
         <div className="bg-panel/95 sticky top-0 z-10 -mx-5 mb-6 flex flex-wrap items-center gap-2 border-b px-5 py-2.5 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
           <ViewControls view={view} />
-          <Button size="sm" className="ml-auto" asChild>
+          {user && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto"
+              onClick={() => addToList.mutate()}
+              disabled={addToList.isPending || listed?.servings === view.servings}
+              title={listed ? `On your shopping list for ${listed.servings} servings` : "Add the ingredients to your shopping list"}
+              aria-label={listed ? "On shopping list" : "Add to shopping list"}
+            >
+              {listed?.servings === view.servings ? <Check /> : <ShoppingBasket />}
+              <span className="hidden sm:inline">{listed ? (listed.servings === view.servings ? "On list" : "Update list") : "Add to list"}</span>
+            </Button>
+          )}
+          <Button size="sm" className={user ? "" : "ml-auto"} asChild>
             <Link to={`/recipes/${r.slug}/cook?servings=${view.servings}&units=${view.units}`} aria-label="Cooking view" title="Cooking view">
               <CookingPot /> <span className="hidden sm:inline">Cook</span>
             </Link>

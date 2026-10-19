@@ -11,6 +11,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RecipeDetail } from "./pages/RecipeDetail";
 import { RecipeEditor } from "./pages/RecipeEditor";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ShoppingPage } from "./pages/ShoppingPage";
 import { SetupPage } from "./pages/SetupPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -34,6 +35,7 @@ export function App() {
         <Route element={<RequireLogin />}>
           <Route path="new" element={<RecipeEditor />} />
           <Route path="import" element={<ImportPage />} />
+          <Route path="shopping" element={<ShoppingPage />} />
           <Route path="recipes/:slug/edit" element={<RecipeEditor />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="admin/users" element={<UsersPage />} />

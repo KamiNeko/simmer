@@ -6,7 +6,7 @@ import type { UnitSystem } from "./api";
 import { formatQuantity, unitLabel } from "./quantity";
 
 /** Millilitres per volume unit. */
-const ML: Record<string, number> = {
+export const ML: Record<string, number> = {
   ml: 1,
   l: 1000,
   tsp: 4.92892,
@@ -18,7 +18,7 @@ const ML: Record<string, number> = {
 };
 
 /** Grams per weight unit. */
-const GRAMS: Record<string, number> = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+export const GRAMS: Record<string, number> = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
 
 const DECIMAL_UNITS: Record<string, true> = { mg: true, g: true, kg: true, ml: true, l: true };
 const decimal = (value: number) => String(Math.round(value * 100) / 100);
