@@ -112,7 +112,7 @@ export function RecipeList() {
         {recipes.isSuccess && visible.length === 0 && (
           <div className="text-muted-foreground p-6 text-center text-sm">
             <UtensilsCrossed className="mx-auto mb-2 size-6 opacity-60" />
-            {recipes.data.length ? "Nothing matches this filter." : "No recipes yet."}
+            {recipes.data.length ? "Nothing matches this filter." : q || tag || mine ? "No recipes match." : "No recipes yet."}
           </div>
         )}
         {visible.map((recipe) => {

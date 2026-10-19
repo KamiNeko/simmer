@@ -102,6 +102,28 @@ describe("recipe detail", () => {
   });
 });
 
+describe("recipe list", () => {
+  it("says nothing matches a search, rather than that there are no recipes", async () => {
+    fakeApi({ "GET /api/recipes": [] });
+    renderApp("/?q=zzz");
+    expect(await screen.findByText("No recipes match.")).toBeInTheDocument();
+    expect(screen.queryByText("No recipes yet.")).not.toBeInTheDocument();
+  });
+
+  it("says there are no recipes yet when nothing narrows the list", async () => {
+    fakeApi({ "GET /api/recipes": [] });
+    renderApp("/");
+    expect(await screen.findByText("No recipes yet.")).toBeInTheDocument();
+  });
+
+  it("says when the filter box hides every recipe", async () => {
+    fakeApi({ "GET /api/recipes": [recipe()] });
+    renderApp("/");
+    await userEvent.type(await screen.findByPlaceholderText("Filter this list…"), "zzz");
+    expect(await screen.findByText("Nothing matches this filter.")).toBeInTheDocument();
+  });
+});
+
 describe("history", () => {
   it("goes back to the recipe after saving an edit, rather than adding it again", async () => {
     const soup = recipe();
