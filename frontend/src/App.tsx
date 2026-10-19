@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
@@ -24,6 +25,12 @@ function EditorRoute() {
   return <RecipeEditor key={slug ?? key} />;
 }
 
+/** A fresh page for each recipe, so servings, ticked ingredients and the current step don't carry over. */
+function PerRecipe({ page: Page }: { page: ComponentType }) {
+  const { slug } = useParams();
+  return <Page key={slug} />;
+}
+
 export function App() {
   const { needsSetup, loading } = useAuth();
   if (loading) return null;
@@ -37,10 +44,10 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/recipes/:slug/cook" element={<CookingView />} />
+      <Route path="/recipes/:slug/cook" element={<PerRecipe page={CookingView} />} />
       <Route element={<AppShell />}>
         <Route index element={<EmptyState />} />
-        <Route path="recipes/:slug" element={<RecipeDetail />} />
+        <Route path="recipes/:slug" element={<PerRecipe page={RecipeDetail} />} />
         <Route element={<RequireLogin />}>
           <Route path="new" element={<EditorRoute />} />
           <Route path="import" element={<ImportPage />} />

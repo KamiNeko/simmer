@@ -52,6 +52,28 @@ describe("recipe editor", () => {
   });
 });
 
+describe("recipe detail", () => {
+  it("starts afresh when switching to another recipe", async () => {
+    const ingredients = [{ quantity: 1, quantity_max: null, unit: null, name: "Egg", note: "", original_text: "", grams_per_ml: null }];
+    const alpha = recipe({ id: 1, slug: "alpha", title: "Alpha", servings: 4, groups: [{ id: 1, name: "", ingredients }] });
+    const beta = recipe({ id: 2, slug: "beta", title: "Beta", servings: 2, groups: [{ id: 2, name: "", ingredients }] });
+    fakeApi({ "GET /api/recipes": [alpha, beta], "GET /api/recipes/alpha": alpha, "GET /api/recipes/beta": beta });
+    renderApp("/recipes/alpha");
+
+    const more = await screen.findByRole("button", { name: "More servings" });
+    await userEvent.click(more);
+    await userEvent.click(more);
+    expect(more.previousElementSibling).toHaveTextContent(/^6/);
+    await userEvent.click(screen.getByRole("checkbox", { name: /egg/i }));
+    expect(screen.getByRole("checkbox", { name: /egg/i })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("link", { name: /beta/i }));
+    expect(await screen.findByRole("heading", { name: "Beta", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More servings" }).previousElementSibling).toHaveTextContent(/^2/);
+    expect(screen.getByRole("checkbox", { name: /egg/i })).not.toBeChecked();
+  });
+});
+
 describe("failed actions", () => {
   it("show the server's message as a toast", async () => {
     fakeApi({
