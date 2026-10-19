@@ -10,6 +10,7 @@ from .models import Recipe
 
 
 def index_recipe(db: Session, recipe: Recipe) -> None:
+    """Write the recipe's current text into the search index."""
     ingredients = " ".join(
         f"{i.name} {i.note}".strip() for g in recipe.groups for i in g.ingredients
     )
@@ -30,6 +31,7 @@ def index_recipe(db: Session, recipe: Recipe) -> None:
 
 
 def remove_recipe(db: Session, recipe_id: int) -> None:
+    """Remove a recipe from the search index."""
     db.execute(text("DELETE FROM recipe_search WHERE rowid = :id"), {"id": recipe_id})
 
 

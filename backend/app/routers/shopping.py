@@ -44,6 +44,7 @@ def build_list(db: DB, user: User) -> ShoppingList:
 
 @router.get("", response_model=ShoppingList)
 def get_list(user: CurrentUser, db: DB) -> ShoppingList:
+    """The user's shopping list."""
     return build_list(db, user)
 
 
@@ -66,6 +67,7 @@ def put_recipe(slug: str, data: ShoppingRecipeIn, user: CurrentUser, db: DB) -> 
 
 @router.delete("/recipes/{slug}", response_model=ShoppingList)
 def remove_recipe(slug: str, user: CurrentUser, db: DB) -> ShoppingList:
+    """Take a recipe off the list."""
     recipe = get_recipe_by_slug(db, slug)
     db.execute(
         delete(ShoppingRecipe).where(
@@ -78,6 +80,7 @@ def remove_recipe(slug: str, user: CurrentUser, db: DB) -> ShoppingList:
 
 @router.post("/extras", response_model=ShoppingList, status_code=status.HTTP_201_CREATED)
 def add_extra(data: ShoppingExtraIn, user: CurrentUser, db: DB) -> ShoppingList:
+    """Add a free-text item to the list."""
     db.add(ShoppingExtra(user_id=user.id, text=data.text.strip()))
     db.commit()
     return build_list(db, user)
@@ -94,6 +97,7 @@ def _extra(db: DB, user: User, extra_id: int) -> ShoppingExtra:
 def update_extra(
     extra_id: int, data: ShoppingExtraUpdate, user: CurrentUser, db: DB
 ) -> ShoppingList:
+    """Change a free-text item or tick it off."""
     extra = _extra(db, user, extra_id)
     if data.text is not None:
         extra.text = data.text.strip()
@@ -105,6 +109,7 @@ def update_extra(
 
 @router.delete("/extras/{extra_id}", response_model=ShoppingList)
 def delete_extra(extra_id: int, user: CurrentUser, db: DB) -> ShoppingList:
+    """Remove a free-text item."""
     db.delete(_extra(db, user, extra_id))
     db.commit()
     return build_list(db, user)

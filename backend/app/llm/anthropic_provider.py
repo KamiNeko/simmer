@@ -17,6 +17,7 @@ class AnthropicProvider:
     def generate_json(
         self, system: str, prompt: str, schema: dict[str, Any], images: Sequence[Image] = ()
     ) -> str:
+        """Ask Claude for JSON matching the schema and return the text."""
         content: list[dict[str, Any]] = [
             {
                 "type": "image",

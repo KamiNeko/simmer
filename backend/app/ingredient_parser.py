@@ -42,6 +42,7 @@ class ParsedIngredient:
 
 
 def parse_number(text: str) -> float:
+    """A number from text such as "1 1/2", "½" or "0,5"."""
     text = text.strip().replace(",", ".")
     total = 0.0
     for part in text.split():
@@ -57,6 +58,7 @@ def parse_number(text: str) -> float:
 
 
 def parse_ingredient(line: str) -> ParsedIngredient:
+    """Split an ingredient line into quantity, unit, name and note."""
     original = line.strip()
     rest = re.sub(r"^[-*•\s]+", "", original)
     # Separate a glued unicode fraction ("1½") so the number regex sees it.

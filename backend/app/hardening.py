@@ -68,6 +68,7 @@ def is_same_origin(headers: Headers) -> bool:
 
 
 def body_limit(path: str) -> int:
+    """The largest request body allowed for this path."""
     for pattern, limit in UPLOAD_LIMITS:
         if pattern.fullmatch(path):
             return limit

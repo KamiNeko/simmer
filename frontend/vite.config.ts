@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   build: { chunkSizeWarningLimit: 800 },
-  server: { proxy: { "/api": "http://localhost:8080" } },
+  server: { proxy: { "/api": "http://localhost:8080", "/media": "http://localhost:8080" } },
   test: {
     setupFiles: ["src/test/setup.ts"],
     coverage: {

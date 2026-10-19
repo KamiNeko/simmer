@@ -158,6 +158,7 @@ def generate_recipe(
 
 
 def import_recipe(provider: Provider, source: str) -> RecipeIn:
+    """A recipe draft from page data or pasted text."""
     return generate_recipe(provider, IMPORT_SYSTEM, f"<recipe>\n{source}\n</recipe>")
 
 
@@ -170,10 +171,12 @@ PHOTO_PROMPT = (
 
 
 def import_photos(provider: Provider, images: Sequence[Image]) -> RecipeIn:
+    """A recipe draft read from photos of the recipe."""
     return generate_recipe(provider, IMPORT_SYSTEM, PHOTO_PROMPT, images)
 
 
 def tidy_recipe(provider: Provider, recipe: RecipeIn) -> RecipeIn:
+    """The recipe with its ingredients split into fields and grouped, title kept."""
     payload = recipe.model_dump(mode="json", exclude={"source_url"})
     tidied = generate_recipe(
         provider, TIDY_SYSTEM, f"<recipe>\n{json.dumps(payload, ensure_ascii=False)}\n</recipe>"
@@ -196,6 +199,7 @@ HEALTH_SCHEMA = _object({"ok": {"type": "boolean"}})
 
 
 def check_connection(provider: Provider) -> None:
+    """Make a tiny request to check the key and model work."""
     raw = provider.generate_json(
         "You answer health checks.", 'Reply with {"ok": true}.', HEALTH_SCHEMA
     )

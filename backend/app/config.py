@@ -20,15 +20,18 @@ class Settings(BaseSettings):
 
     @property
     def secure_cookies(self) -> bool:
+        """Whether the login cookie is sent over HTTPS only."""
         if self.cookie_secure is not None:
             return self.cookie_secure
         return self.base_url.startswith("https://")
 
     @property
     def database_url(self) -> str:
+        """The SQLite URL for simmer.db in the data directory."""
         return f"sqlite:///{self.data_dir / 'simmer.db'}"
 
 
 @lru_cache
 def get_settings() -> Settings:
+    """The settings, read once from the environment and .env."""
     return Settings()

@@ -42,6 +42,7 @@ def _needs_setup(db: DB) -> bool:
 
 @router.get("/me", response_model=AuthState)
 def me(user: OptionalUser, db: DB) -> AuthState:
+    """The signed-in user, if any, and whether setup is still needed."""
     return AuthState(
         user=UserOut.model_validate(user) if user else None,
         needs_setup=_needs_setup(db),
@@ -74,6 +75,7 @@ class LoginThrottle:
     WINDOW = 15 * 60
     PER_USERNAME = 10
     PER_ADDRESS = 30
+    SWEEP_AT = 1000
 
     def __init__(self) -> None:
         self.failures: defaultdict[str, deque[float]] = defaultdict(deque)
@@ -100,11 +102,17 @@ class LoginThrottle:
         return max(waits, default=0)
 
     def failed(self, username: str, address: str) -> None:
+        """Count a failed login for the account and the address."""
         now = time.monotonic()
+        if len(self.failures) > self.SWEEP_AT:
+            # Guesses at many different usernames would otherwise pile up entries forever.
+            for key in list(self.failures):
+                self._recent(key, now)
         self.failures[f"u:{username}"].append(now)
         self.failures[f"a:{address}"].append(now)
 
     def succeeded(self, username: str) -> None:
+        """Forget the account's failures after a good login."""
         self.failures.pop(f"u:{username}", None)
 
 
@@ -118,6 +126,7 @@ def _dummy_hash() -> str:
 
 @router.post("/login", response_model=UserOut)
 def login(data: LoginIn, request: Request, db: DB, response: Response) -> User:
+    """Sign in and set the session cookie, with throttling of failed attempts."""
     username = data.username.lower()
     address = request.client.host if request.client else "unknown"
     wait = throttle.retry_after(username, address)
@@ -141,6 +150,7 @@ def login(data: LoginIn, request: Request, db: DB, response: Response) -> User:
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(request: Request, db: DB, response: Response) -> None:
+    """End this session and clear the cookie."""
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         session = db.scalar(select(UserSession).where(UserSession.token_hash == hash_token(token)))
@@ -152,6 +162,7 @@ def logout(request: Request, db: DB, response: Response) -> None:
 
 @router.patch("/me", response_model=UserOut)
 def update_me(data: MeUpdate, user: CurrentUser, db: DB) -> User:
+    """Change the user's display name or unit preference."""
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
     db.commit()
@@ -169,6 +180,7 @@ def end_other_sessions(db: DB, request: Request, user: User) -> None:
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
 def change_password(data: PasswordChange, request: Request, user: CurrentUser, db: DB) -> None:
+    """Change the user's password and sign out their other devices."""
     if not verify_password(user.password_hash, data.current_password):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is wrong")
     user.password_hash = hash_password(data.new_password)

@@ -23,11 +23,13 @@ def _admin_count(db: DB) -> int:
 
 @router.get("", response_model=list[UserOut])
 def list_users(_: AdminUser, db: DB) -> list[User]:
+    """All accounts, for the admin."""
     return list(db.scalars(select(User).order_by(User.username)))
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(data: UserCreate, _: AdminUser, db: DB) -> User:
+    """Create an account; usernames are unique regardless of case."""
     exists = db.scalar(select(User).where(func.lower(User.username) == data.username.lower()))
     if exists:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username is taken")
@@ -44,6 +46,7 @@ def create_user(data: UserCreate, _: AdminUser, db: DB) -> User:
 
 @router.patch("/{user_id}", response_model=UserOut)
 def update_user(user_id: int, data: UserUpdate, request: Request, admin: AdminUser, db: DB) -> User:
+    """Change an account's name, role or password, keeping at least one admin."""
     user = _get(db, user_id)
     if data.role == Role.member and user.is_admin and _admin_count(db) == 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Keep at least one admin")
@@ -61,6 +64,7 @@ def update_user(user_id: int, data: UserUpdate, request: Request, admin: AdminUs
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, admin: AdminUser, db: DB) -> None:
+    """Delete an account other than your own."""
     user = _get(db, user_id)
     if user.id == admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You cannot delete yourself")

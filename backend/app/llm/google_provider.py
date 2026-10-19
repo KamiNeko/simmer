@@ -20,6 +20,7 @@ class GoogleProvider:
     def generate_json(
         self, system: str, prompt: str, schema: dict[str, Any], images: Sequence[Image] = ()
     ) -> str:
+        """Ask Gemini for JSON matching the schema and return the text."""
         contents: list[Any] = [
             types.Part.from_bytes(data=image.data, mime_type=image.media_type) for image in images
         ]

@@ -76,11 +76,13 @@ def list_recipes(
 
 @router.get("/recipes/{slug}", response_model=RecipeOut)
 def get_recipe(slug: str, user: OptionalUser, db: DB) -> RecipeOut:
+    """One recipe with its stats; visitors can read it too."""
     return recipe_detail(db, get_recipe_by_slug(db, slug), user)
 
 
 @router.post("/recipes", response_model=RecipeOut, status_code=status.HTTP_201_CREATED)
 def create_recipe(data: RecipeIn, user: CurrentUser, db: DB) -> RecipeOut:
+    """Save a new recipe by the signed-in user."""
     recipe = Recipe(slug=unique_slug(db, data.title), author_id=user.id)
     apply_recipe(db, recipe, data)
     db.add(recipe)
@@ -92,6 +94,7 @@ def create_recipe(data: RecipeIn, user: CurrentUser, db: DB) -> RecipeOut:
 
 @router.put("/recipes/{slug}", response_model=RecipeOut)
 def update_recipe(slug: str, data: RecipeIn, user: CurrentUser, db: DB) -> RecipeOut:
+    """Save changes to a recipe the user may edit."""
     recipe = get_recipe_by_slug(db, slug)
     if not can_edit(user, recipe):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only edit your own recipes")
@@ -107,6 +110,7 @@ def update_recipe(slug: str, data: RecipeIn, user: CurrentUser, db: DB) -> Recip
 
 @router.delete("/recipes/{slug}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_recipe(slug: str, user: CurrentUser, db: DB) -> None:
+    """Delete a recipe the user may edit, with its photo."""
     recipe = get_recipe_by_slug(db, slug)
     if not can_edit(user, recipe):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only delete your own recipes")
@@ -128,6 +132,7 @@ def _editable(db: DB, slug: str, user: User) -> Recipe:
 
 @router.put("/recipes/{slug}/photo", response_model=RecipeOut)
 def upload_photo(slug: str, file: UploadFile, user: CurrentUser, db: DB) -> RecipeOut:
+    """Replace a recipe's photo with an uploaded image."""
     recipe = _editable(db, slug, user)
     data = file.file.read(photos.MAX_UPLOAD_BYTES + 1)
     try:
@@ -157,6 +162,7 @@ def photo_from_url(slug: str, data: PhotoFromUrl, user: CurrentUser, db: DB) -> 
 
 @router.delete("/recipes/{slug}/photo", response_model=RecipeOut)
 def delete_recipe_photo(slug: str, user: CurrentUser, db: DB) -> RecipeOut:
+    """Remove a recipe's photo."""
     recipe = _editable(db, slug, user)
     old, recipe.photo = recipe.photo, None
     db.commit()
@@ -166,6 +172,7 @@ def delete_recipe_photo(slug: str, user: CurrentUser, db: DB) -> RecipeOut:
 
 @router.get("/tags", response_model=list[TagOut])
 def list_tags(db: DB) -> list[TagOut]:
+    """Every tag in use, with how many recipes have it."""
     rows = db.execute(
         select(Tag.name, func.count(recipe_tags.c.recipe_id))
         .join(recipe_tags)
