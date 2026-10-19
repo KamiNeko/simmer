@@ -110,6 +110,13 @@ describe("recipe list", () => {
     expect(screen.queryByText("No recipes yet.")).not.toBeInTheDocument();
   });
 
+  it("shows visitors every recipe under All Recipes for a My Recipes link", async () => {
+    const api = fakeApi({ "GET /api/auth/me": { user: null, needs_setup: false }, "GET /api/recipes": [recipe()] });
+    renderApp("/?mine=1");
+    expect(await screen.findByRole("heading", { name: "All Recipes" })).toBeInTheDocument();
+    expect(api.mock.calls.some(([url]) => String(url).includes("author"))).toBe(false);
+  });
+
   it("says there are no recipes yet when nothing narrows the list", async () => {
     fakeApi({ "GET /api/recipes": [] });
     renderApp("/");

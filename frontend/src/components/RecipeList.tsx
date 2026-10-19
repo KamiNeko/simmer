@@ -26,7 +26,8 @@ export function RecipeList() {
   const [filter, setFilter] = useState("");
   const tag = params.get("tag") ?? undefined;
   const q = params.get("q") ?? undefined;
-  const mine = params.get("mine") === "1";
+  // Visitors have no recipes of their own, so they see them all.
+  const mine = params.get("mine") === "1" && !!user;
   const sortParam = params.get("sort") ?? undefined;
   const sort = sortParam ?? (q ? "relevance" : "updated");
 
