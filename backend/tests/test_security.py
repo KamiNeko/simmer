@@ -12,6 +12,7 @@ from PIL import Image
 from app import importer
 from app.config import get_settings
 from app.main import app
+from app.routers.auth import LoginThrottle
 
 from .conftest import SAMPLE_RECIPE, login
 
@@ -249,3 +250,16 @@ def test_fetch_follows_redirects(web):
         "http://site.example/recipe",
         "text/html",
     )
+
+
+def test_login_throttle_forgets_old_failures():
+    limiter = LoginThrottle()
+    limiter.SWEEP_AT = 10
+    for n in range(20):
+        limiter.failed(f"user{n}", "10.0.0.1")
+    for times in limiter.failures.values():
+        times[0] -= LoginThrottle.WINDOW + 1
+        while len(times) > 1:
+            times.pop()
+    limiter.failed("someone", "10.0.0.2")
+    assert set(limiter.failures) == {"u:someone", "a:10.0.0.2"}
