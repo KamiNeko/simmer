@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, PlugZap, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type AIProvider, api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 import { PageFrame, Panel } from "./PageFrame";
 
@@ -107,7 +109,9 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
 }
 
 export function AIProvidersPage() {
-  const providers = useQuery({ queryKey: ["admin-ai-providers"], queryFn: api.adminProviders });
+  const { isAdmin } = useAuth();
+  const providers = useQuery({ queryKey: ["admin-ai-providers"], queryFn: api.adminProviders, enabled: isAdmin });
+  if (!isAdmin) return <Navigate to="/" replace />;
   return (
     <PageFrame title="AI providers">
       <Panel

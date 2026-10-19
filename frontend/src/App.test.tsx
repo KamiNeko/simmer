@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { renamedSlugs } from "./lib/queries";
 import { createQueryClient } from "./lib/queryClient";
-import { fakeApi, recipe } from "./test/fakeApi";
+import { fakeApi, recipe, USER } from "./test/fakeApi";
 
 /** Shows how the router last moved (PUSH, REPLACE or POP) and where to, for checking history. */
 function NavProbe() {
@@ -121,6 +121,15 @@ describe("recipe list", () => {
     renderApp("/");
     await userEvent.type(await screen.findByPlaceholderText("Filter this list…"), "zzz");
     expect(await screen.findByText("Nothing matches this filter.")).toBeInTheDocument();
+  });
+});
+
+describe("admin pages", () => {
+  it.each(["/admin/ai", "/admin/users"])("send members from %s to the recipe list", async (path) => {
+    const api = fakeApi({ "GET /api/auth/me": { user: { ...USER, role: "member" }, needs_setup: false } });
+    renderApp(path);
+    await vi.waitFor(() => expect(lastNavigation()).toBe("REPLACE /"));
+    expect(api.mock.calls.some(([url]) => String(url).includes("/admin"))).toBe(false);
   });
 });
 
