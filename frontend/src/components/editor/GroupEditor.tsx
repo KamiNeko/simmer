@@ -102,19 +102,26 @@ export function GroupEditor({
         <span>Note</span>
       </div>
       <SortableList items={group.rows} onChange={setRows}>
-        <div className="space-y-2">
+        <div className="space-y-4 sm:space-y-2">
           {group.rows.map((row) => (
             <SortableItem key={row.key} id={row.key}>
+              {/* Phones: amount and unit share the first line, then the name and note get a line each. */}
               <div className="grid grid-cols-[5rem_5.5rem_1fr_2rem] gap-2 sm:grid-cols-[5rem_5.5rem_1fr_10rem_2rem]">
                 <Input value={row.qty} onChange={(e) => updateRow(row.key, { qty: e.target.value })} placeholder="1 ½" aria-label="Amount" />
                 <Input value={row.unit} onChange={(e) => updateRow(row.key, { unit: e.target.value })} placeholder="unit" list="simmer-units" aria-label="Unit" />
-                <Input value={row.name} onChange={(e) => updateRow(row.key, { name: e.target.value })} placeholder="Ingredient" aria-label="Ingredient" />
+                <Input
+                  value={row.name}
+                  onChange={(e) => updateRow(row.key, { name: e.target.value })}
+                  placeholder="Ingredient"
+                  aria-label="Ingredient"
+                  className="col-span-3 col-start-1 row-start-2 sm:col-span-1 sm:col-start-auto sm:row-start-auto"
+                />
                 <Input
                   value={row.note}
                   onChange={(e) => updateRow(row.key, { note: e.target.value })}
                   placeholder="Note"
                   aria-label="Note"
-                  className="col-span-3 col-start-1 row-start-2 sm:col-span-1 sm:col-start-auto sm:row-start-auto"
+                  className="col-span-3 col-start-1 row-start-3 sm:col-span-1 sm:col-start-auto sm:row-start-auto"
                 />
                 <Button
                   type="button"
