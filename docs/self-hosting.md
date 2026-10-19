@@ -129,7 +129,7 @@ docker compose up -d --build
 
 On start, Simmer runs any new database migrations before it serves requests (`upgrade_database` in `backend/app/main.py`), so there is nothing else to do. Check `docker compose logs simmer` if the container doesn't become healthy.
 
-CI also publishes `ghcr.io/kamineko/simmer:latest` from the main branch, which is the image name in the compose file. If you can pull it, `docker compose pull && docker compose up -d` updates without building.
+CI publishes `ghcr.io/kamineko/simmer:latest` from the main branch, which is the image name in the compose file, and a version tag such as `ghcr.io/kamineko/simmer:0.1.0` for each release. Pin a version in `docker-compose.yml` to update only when you choose. If you can pull it, `docker compose pull && docker compose up -d` updates without building.
 
 Migrations only go forward on their own. To go back to an older version, restore the backup you took before updating.
 
