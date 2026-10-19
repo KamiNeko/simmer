@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CookBar, NotesSection } from "@/components/Journal";
 import { PlanDialog } from "@/components/PlanDialog";
-import { IngredientLine, useRecipeView, ViewControls } from "@/components/RecipeView";
+import { IngredientLine, useHandedOverView, useRecipeView, ViewControls } from "@/components/RecipeView";
 import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -46,7 +46,7 @@ export function RecipeDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [planning, setPlanning] = useState(false);
   const recipe = useRecipe(slug);
-  const view = useRecipeView(recipe.data);
+  const view = useRecipeView(recipe.data, useHandedOverView(slug));
   const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
   const listed = shopping.data?.recipes.find((e) => e.recipe.slug === slug);
   const addToList = useMutation({
@@ -192,7 +192,12 @@ export function RecipeDetail() {
             </Button>
           )}
           <Button size="sm" className={user ? "" : "ml-auto"} asChild>
-            <Link to={`/recipes/${r.slug}/cook?servings=${view.servings}&units=${view.units}`} aria-label="Cooking view" title="Cooking view">
+            <Link
+              to={`/recipes/${r.slug}/cook?servings=${view.servings}&units=${view.units}`}
+              state={{ fromRecipe: true }}
+              aria-label="Cooking view"
+              title="Cooking view"
+            >
               <CookingPot /> <span className="hidden sm:inline">Cook</span>
             </Link>
           </Button>

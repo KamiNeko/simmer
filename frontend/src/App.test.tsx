@@ -2,7 +2,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigationType } from "react-router-dom";
 import { Toaster } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -10,11 +10,19 @@ import { App } from "./App";
 import { createQueryClient } from "./lib/queryClient";
 import { fakeApi, recipe } from "./test/fakeApi";
 
-function renderApp(path: string, client = createQueryClient()) {
+/** Shows how the router last moved (PUSH, REPLACE or POP) and where to, for checking history. */
+function NavProbe() {
+  const { pathname, search } = useLocation();
+  return <output data-testid="nav">{`${useNavigationType()} ${pathname}${search}`}</output>;
+}
+const lastNavigation = () => screen.getByTestId("nav").textContent;
+
+function renderApp(path: string | string[], client = createQueryClient()) {
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={Array.isArray(path) ? path : [path]}>
         <App />
+        <NavProbe />
         <Toaster />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -53,8 +61,7 @@ describe("recipe editor", () => {
 
   it("brings the problems into view and focuses a missing title", async () => {
     fakeApi({});
-    const scrolled = vi.fn<Element["scrollIntoView"]>();
-    Element.prototype.scrollIntoView = scrolled;
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
     renderApp("/new");
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
     expect(screen.getByRole("list", { name: "Problems" })).toHaveTextContent("Give the recipe a title.");
@@ -65,7 +72,7 @@ describe("recipe editor", () => {
     await userEvent.type(screen.getByLabelText("Servings"), "0");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     expect(screen.getByRole("list", { name: "Problems" })).toHaveFocus();
-    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    scrolled.mockRestore();
   });
 });
 
@@ -88,6 +95,35 @@ describe("recipe detail", () => {
     expect(await screen.findByRole("heading", { name: "Beta", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More servings" }).previousElementSibling).toHaveTextContent(/^2/);
     expect(screen.getByRole("checkbox", { name: /egg/i })).not.toBeChecked();
+  });
+});
+
+describe("cooking view", () => {
+  const steps = [{ id: 1, section: "", text: "Stir" }];
+
+  it("goes back to the recipe keeping the servings and units chosen while cooking", async () => {
+    fakeApi({ "GET /api/recipes/soup": recipe({ steps }) });
+    renderApp("/recipes/soup");
+    await userEvent.click(await screen.findByRole("link", { name: "Cooking view" }));
+    const more = await screen.findByRole("button", { name: "More servings" });
+    await userEvent.click(more);
+    await userEvent.click(screen.getByRole("radio", { name: "US" }));
+
+    await userEvent.click(screen.getByRole("link", { name: "Leave cooking view" }));
+    expect(await screen.findByRole("heading", { name: "Soup", level: 1 })).toBeInTheDocument();
+    expect(lastNavigation()).toBe("POP /recipes/soup");
+    expect(screen.getByRole("button", { name: "More servings" }).previousElementSibling).toHaveTextContent(/^5/);
+    expect(screen.getByRole("radio", { name: "US" })).toBeChecked();
+  });
+
+  it("replaces itself with the recipe when opened directly", async () => {
+    fakeApi({ "GET /api/recipes/soup": recipe({ steps }) });
+    renderApp("/recipes/soup/cook?servings=2&units=us");
+    await userEvent.click(await screen.findByRole("link", { name: "Leave cooking view" }));
+    expect(await screen.findByRole("heading", { name: "Soup", level: 1 })).toBeInTheDocument();
+    expect(lastNavigation()).toBe("REPLACE /recipes/soup");
+    expect(screen.getByRole("button", { name: "More servings" }).previousElementSibling).toHaveTextContent(/^2/);
+    expect(screen.getByRole("radio", { name: "US" })).toBeChecked();
   });
 });
 
