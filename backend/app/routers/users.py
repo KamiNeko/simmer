@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import func, select
 
 from ..deps import DB, AdminUser
-from ..models import Role, User, UserSession
+from ..models import Role, User
 from ..schemas import UserCreate, UserOut, UserUpdate
 from ..security import hash_password
+from .auth import end_other_sessions
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -42,7 +43,7 @@ def create_user(data: UserCreate, _: AdminUser, db: DB) -> User:
 
 
 @router.patch("/{user_id}", response_model=UserOut)
-def update_user(user_id: int, data: UserUpdate, admin: AdminUser, db: DB) -> User:
+def update_user(user_id: int, data: UserUpdate, request: Request, admin: AdminUser, db: DB) -> User:
     user = _get(db, user_id)
     if data.role == Role.member and user.is_admin and _admin_count(db) == 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Keep at least one admin")
@@ -52,10 +53,8 @@ def update_user(user_id: int, data: UserUpdate, admin: AdminUser, db: DB) -> Use
         user.role = data.role
     if data.password is not None:
         user.password_hash = hash_password(data.password)
-        # A reset signs the user out everywhere, except the admin resetting themselves.
-        if user.id != admin.id:
-            for session in db.scalars(select(UserSession).where(UserSession.user_id == user.id)):
-                db.delete(session)
+        # A reset signs the user out everywhere, except this session when admins reset their own.
+        end_other_sessions(db, request, user)
     db.commit()
     return user
 

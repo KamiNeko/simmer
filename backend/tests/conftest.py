@@ -13,6 +13,9 @@ def client(tmp_path, monkeypatch):
     get_settings.cache_clear()
     db_module.init_engine()
     from app.main import app
+    from app.routers.auth import throttle
+
+    throttle.failures.clear()
 
     with TestClient(app) as test_client:
         yield test_client

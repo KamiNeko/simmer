@@ -5,10 +5,11 @@ import ipaddress
 import json
 import re
 import socket
+import time
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urljoin
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import httpx
 from bs4 import BeautifulSoup, Tag
@@ -18,6 +19,9 @@ from .schemas import GroupIn, IngredientIn, RecipeIn, StepIn
 
 MAX_PAGE_BYTES = 5 * 1024 * 1024
 MAX_TEXT_CHARS = 40_000
+# Per read, and for the whole download, so a slow site can't hold a worker for long.
+READ_TIMEOUT = 20
+TOTAL_TIMEOUT = 60
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/130.0 Safari/537.36 Simmer/1.0"
@@ -49,20 +53,37 @@ def _check_public(url: httpx.URL) -> None:
             raise FetchError("Links to local or private addresses can't be imported")
 
 
+def _proxied(url: httpx.URL) -> bool:
+    return bool(getproxies().get(url.scheme)) and not proxy_bypass(url.host)
+
+
+def _check_peer(response: httpx.Response) -> None:
+    """Check the address actually connected to, which the name may not have resolved to the
+    first time (DNS rebinding). Behind a proxy the peer is the proxy, which decides instead."""
+    if _proxied(response.request.url):
+        return
+    stream = response.extensions.get("network_stream")
+    peer = stream.get_extra_info("server_addr") if stream else None
+    if peer and not ipaddress.ip_address(peer[0]).is_global:
+        raise FetchError("Links to local or private addresses can't be imported")
+
+
 def fetch(url: str, max_bytes: int = MAX_PAGE_BYTES) -> tuple[bytes, str, str]:
     """Download a public URL and return (body, final URL, content type)."""
 
     def on_request(request: httpx.Request) -> None:
         _check_public(request.url)
 
+    deadline = time.monotonic() + TOTAL_TIMEOUT
+
     try:
         with (
             httpx.Client(
                 follow_redirects=True,
                 max_redirects=5,
-                timeout=20,
+                timeout=READ_TIMEOUT,
                 headers={"User-Agent": USER_AGENT, "Accept-Language": "en,de;q=0.8"},
-                event_hooks={"request": [on_request]},
+                event_hooks={"request": [on_request], "response": [_check_peer]},
             ) as client,
             client.stream("GET", url) as response,
         ):
@@ -74,6 +95,8 @@ def fetch(url: str, max_bytes: int = MAX_PAGE_BYTES) -> tuple[bytes, str, str]:
                 size += len(chunk)
                 if size > max_bytes:
                     raise FetchError("The page is too large to import")
+                if time.monotonic() > deadline:
+                    raise FetchError("The site took too long to answer")
                 chunks.append(chunk)
             content_type = response.headers.get("content-type", "")
             return b"".join(chunks), str(response.url), content_type

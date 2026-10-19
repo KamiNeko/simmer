@@ -14,10 +14,8 @@ SESSION_COOKIE = "simmer_session"
 DB = Annotated[Session, Depends(get_db)]
 
 
-def current_user_optional(request: Request, db: DB) -> User | None:
-    token = request.cookies.get(SESSION_COOKIE)
-    if not token:
-        return None
+def _session(db: Session, token: str) -> UserSession | None:
+    """The unexpired session for a cookie token; expired ones are removed on sight."""
     session = db.scalar(select(UserSession).where(UserSession.token_hash == hash_token(token)))
     if session is None:
         return None
@@ -28,7 +26,17 @@ def current_user_optional(request: Request, db: DB) -> User | None:
         db.delete(session)
         db.commit()
         return None
-    return session.user
+    return session
+
+
+def session_is_valid(db: Session, token: str) -> bool:
+    return _session(db, token) is not None
+
+
+def current_user_optional(request: Request, db: DB) -> User | None:
+    token = request.cookies.get(SESSION_COOKIE)
+    session = _session(db, token) if token else None
+    return session.user if session else None
 
 
 def current_user(user: Annotated[User | None, Depends(current_user_optional)]) -> User:

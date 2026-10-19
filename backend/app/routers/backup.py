@@ -5,6 +5,7 @@ import json
 import sqlite3
 import tempfile
 import zipfile
+import zlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -116,7 +117,12 @@ def _read_export(data: bytes) -> tuple[dict, zipfile.ZipFile | None]:
             ) from exc
         if info.file_size > MAX_JSON_BYTES:
             raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "recipes.json is too large")
-        raw, source = archive.read(info), archive
+        try:
+            raw, source = archive.read(info), archive
+        except (zipfile.BadZipFile, zlib.error) as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "The zip file is damaged"
+            ) from exc
     else:
         raw, source = data, None
     try:
@@ -146,13 +152,16 @@ def _photo_bytes(archive: zipfile.ZipFile | None, name: object) -> bytes | None:
         return None
     if info.file_size > photos.MAX_UPLOAD_BYTES:
         return None
-    return archive.read(info)
+    try:
+        return archive.read(info)
+    except (zipfile.BadZipFile, zlib.error):
+        return None
 
 
 @router.post("/import/file", response_model=ImportFileResult)
-async def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult:
+def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult:
     """Import recipes from a Simmer export. Recipes whose title already exists are skipped."""
-    data = await file.read(MAX_IMPORT_BYTES + 1)
+    data = file.file.read(MAX_IMPORT_BYTES + 1)
     if len(data) > MAX_IMPORT_BYTES:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "The file is larger than 500 MB")
     document, archive = _read_export(data)

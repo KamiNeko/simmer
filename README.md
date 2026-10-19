@@ -29,9 +29,18 @@ If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first vi
 | --- | --- | --- |
 | `SIMMER_ADMIN_USERNAME`, `SIMMER_ADMIN_PASSWORD` | unset | Admin account created on first start |
 | `SIMMER_SECRET_KEY` | generated into `data/secret.key` | Encrypts the stored AI provider keys. If it changes, re-enter the keys |
-| `SIMMER_BASE_URL` | `http://localhost:8080` | Public URL, used in link previews |
-| `SIMMER_COOKIE_SECURE` | `false` | Send the login cookie over HTTPS only |
-| `SIMMER_DATA_DIR` | `/data` in Docker | Where the database and photos are stored |
+| `SIMMER_BASE_URL` | `http://localhost:8080` | Public URL, used in link previews. An `https` address turns on secure cookies |
+| `SIMMER_COOKIE_SECURE` | follows `SIMMER_BASE_URL` | Send the login cookie over HTTPS only. Set `false` to try Simmer over plain http |
+| `SIMMER_SESSION_DAYS` | `30` | How long a login lasts |
+| `SIMMER_DATA_DIR` | `/data` in Docker, `./data` otherwise | Where the database and photos are stored |
+| `FORWARDED_ALLOW_IPS` | `*` in Docker | Proxies trusted to set `X-Forwarded-*` headers. Set it to your reverse proxy's IP |
+
+## Security
+
+- After 10 failed logins for one account (or 30 from one address) within 15 minutes, further attempts wait. Changing a password signs out every other device.
+- Pages send a strict Content-Security-Policy and refuse to be framed. Requests that change data must come from Simmer's own pages, not from another site.
+- Imports only fetch public addresses, checked again for the address actually connected to, and stop after 60 seconds or 5 MB. Uploaded images over 40 megapixels are refused, and request bodies are capped (2 MB, larger only for signed-in uploads).
+- The API reference is at `/api/docs`.
 
 ## Who can do what
 

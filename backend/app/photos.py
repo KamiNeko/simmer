@@ -11,6 +11,8 @@ from .config import get_settings
 FULL_SIZE = 1600
 THUMB_SIZE = 480
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+# A tiny file can claim a huge canvas; 40 megapixels covers any phone or camera photo.
+MAX_PIXELS = 40_000_000
 
 
 class InvalidImage(ValueError):
@@ -29,24 +31,33 @@ def photo_urls(name: str | None) -> tuple[str | None, str | None]:
     return f"/media/photos/{name}.webp", f"/media/photos/{name}-thumb.webp"
 
 
+def _open(data: bytes, size: int, unreadable: str) -> Image.Image:
+    """Decode an upload safely: refuse oversized canvases before decoding any pixels."""
+    try:
+        image = Image.open(io.BytesIO(data))
+        if image.width * image.height > MAX_PIXELS:
+            raise InvalidImage("The image has too many pixels")
+        # JPEGs can decode at a fraction of their size, which saves memory for big photos.
+        image.draft("RGB", (size, size))
+        image = ImageOps.exif_transpose(image)
+        image.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise InvalidImage(unreadable) from exc
+    return image
+
+
 def save_photo(data: bytes, recipe_id: int) -> str:
     """Write the full-size and thumbnail versions and return the base name."""
     if len(data) > MAX_UPLOAD_BYTES:
         raise InvalidImage("The photo is larger than 20 MB")
-    try:
-        image = Image.open(io.BytesIO(data))
-        image = ImageOps.exif_transpose(image)
-        image.load()
-    except (UnidentifiedImageError, OSError) as exc:
-        raise InvalidImage("The file is not an image Simmer can read") from exc
+    image = _open(data, FULL_SIZE, "The file is not an image Simmer can read")
     if image.mode not in ("RGB", "RGBA"):
         image = image.convert("RGB")
 
     name = f"{recipe_id}-{secrets.token_hex(6)}"
     folder = photos_dir()
-    full = image.copy()
-    full.thumbnail((FULL_SIZE, FULL_SIZE))
-    full.save(folder / f"{name}.webp", "WEBP", quality=82)
+    image.thumbnail((FULL_SIZE, FULL_SIZE))
+    image.save(folder / f"{name}.webp", "WEBP", quality=82)
     thumb = image.copy()
     thumb.thumbnail((THUMB_SIZE, THUMB_SIZE))
     thumb.save(folder / f"{name}-thumb.webp", "WEBP", quality=78)
@@ -68,13 +79,7 @@ def prepare_for_ai(data: bytes) -> bytes:
     """A JPEG of a recipe photo small enough for the AI providers, readable text kept."""
     if len(data) > MAX_UPLOAD_BYTES:
         raise InvalidImage("A photo is larger than 20 MB")
-    try:
-        image = Image.open(io.BytesIO(data))
-        image = ImageOps.exif_transpose(image)
-        image.load()
-    except (UnidentifiedImageError, OSError) as exc:
-        raise InvalidImage("A file is not an image Simmer can read") from exc
-    image = image.convert("RGB")
+    image = _open(data, AI_IMAGE_SIZE, "A file is not an image Simmer can read").convert("RGB")
     image.thumbnail((AI_IMAGE_SIZE, AI_IMAGE_SIZE))
     buffer = io.BytesIO()
     image.save(buffer, "JPEG", quality=85)

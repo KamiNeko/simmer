@@ -14,8 +14,15 @@ class Settings(BaseSettings):
     admin_password: str | None = None
     base_url: str = "http://localhost:8080"
     static_dir: Path | None = None
-    cookie_secure: bool = False
+    # Unset means: secure cookies whenever base_url is https.
+    cookie_secure: bool | None = None
     session_days: int = 30
+
+    @property
+    def secure_cookies(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.base_url.startswith("https://")
 
     @property
     def database_url(self) -> str:

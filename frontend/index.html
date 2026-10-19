@@ -6,13 +6,7 @@
     <meta name="theme-color" content="#1c1c1c" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Simmer</title>
-    <script>
-      try {
-        const t = localStorage.getItem("simmer-theme");
-        if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches))
-          document.documentElement.classList.add("dark");
-      } catch {}
-    </script>
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>

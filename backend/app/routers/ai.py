@@ -3,7 +3,6 @@ from typing import Annotated
 from fastapi import APIRouter, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from starlette.concurrency import run_in_threadpool
 
 from .. import crypto, importer, photos
 from ..deps import DB, AdminUser, CurrentUser
@@ -156,7 +155,7 @@ def _import_url(url: str, provider: Provider | None) -> ImportOut:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 "This page has no recipe data Simmer can read without AI. "
-                "An admin can add an AI provider in Settings.",
+                "An admin can add an AI provider under AI providers.",
             )
         recipe = plain
         provider = None
@@ -182,7 +181,7 @@ def import_recipe_draft(data: ImportIn, _: CurrentUser, db: DB) -> ImportOut:
     if provider is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Importing pasted text needs an AI provider. An admin can add one in Settings.",
+            "Importing pasted text needs an AI provider. An admin can add one under AI providers.",
         )
     try:
         recipe = import_recipe(provider, text)
@@ -192,7 +191,7 @@ def import_recipe_draft(data: ImportIn, _: CurrentUser, db: DB) -> ImportOut:
 
 
 @router.post("/import/photos", response_model=ImportOut)
-async def import_photo_draft(
+def import_photo_draft(
     files: list[UploadFile],
     _: CurrentUser,
     db: DB,
@@ -207,17 +206,17 @@ async def import_photo_draft(
     if chosen is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Importing photos needs an AI provider. An admin can add one in Settings.",
+            "Importing photos needs an AI provider. An admin can add one under AI providers.",
         )
     images = []
     for file in files:
         try:
-            data = photos.prepare_for_ai(await file.read(photos.MAX_UPLOAD_BYTES + 1))
+            data = photos.prepare_for_ai(file.file.read(photos.MAX_UPLOAD_BYTES + 1))
         except photos.InvalidImage as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
         images.append(Image(data=data, media_type="image/jpeg"))
     try:
-        recipe = await run_in_threadpool(import_photos, chosen, images)
+        recipe = import_photos(chosen, images)
     except LLMError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     return ImportOut(recipe=recipe, provider=chosen.kind, model=chosen.model)
@@ -229,7 +228,7 @@ def tidy(data: TidyIn, _: CurrentUser, db: DB) -> RecipeIn:
     if provider is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Tidy up needs an AI provider. An admin can add one in Settings.",
+            "Tidy up needs an AI provider. An admin can add one under AI providers.",
         )
     try:
         return tidy_recipe(provider, data.recipe)
