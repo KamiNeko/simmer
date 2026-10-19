@@ -1,14 +1,18 @@
 import re
 import unicodedata
+from dataclasses import asdict
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import func, or_, select
+from fastapi import APIRouter, HTTPException, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from .. import photos, search
 from ..deps import DB, CurrentUser, OptionalUser
 from ..ingredient_parser import parse_ingredient
 from ..models import Ingredient, IngredientGroup, Recipe, Step, Tag, User, recipe_tags
 from ..schemas import ParseIn, RecipeIn, RecipeOut, RecipeSummary, TagOut
+from ..stats import RecipeStats, stats_for
 
 router = APIRouter(prefix="/api", tags=["recipes"])
 
@@ -48,26 +52,27 @@ def _preview(recipe: Recipe, limit: int = 8) -> str:
     return text + ("…" if len(names) > limit else "")
 
 
-def _summary(recipe: Recipe, user: User | None) -> RecipeSummary:
-    return RecipeSummary.model_validate(
-        {
-            **{k: getattr(recipe, k) for k in RecipeSummary.model_fields if hasattr(recipe, k)},
-            "tags": [t.name for t in recipe.tags],
-            "ingredient_preview": _preview(recipe),
-            "can_edit": can_edit(user, recipe),
-        }
-    )
+def _fields(recipe: Recipe, user: User | None, stats: RecipeStats) -> dict:
+    photo_url, thumb_url = photos.photo_urls(recipe.photo)
+    return {
+        "tags": [t.name for t in recipe.tags],
+        "ingredient_preview": _preview(recipe),
+        "can_edit": can_edit(user, recipe),
+        "photo_url": photo_url,
+        "thumb_url": thumb_url,
+        **asdict(stats),
+    }
 
 
-def _detail(recipe: Recipe, user: User | None) -> RecipeOut:
-    return RecipeOut.model_validate(
-        {
-            **{k: getattr(recipe, k) for k in RecipeOut.model_fields if hasattr(recipe, k)},
-            "tags": [t.name for t in recipe.tags],
-            "ingredient_preview": _preview(recipe),
-            "can_edit": can_edit(user, recipe),
-        }
-    )
+def _summary(recipe: Recipe, user: User | None, stats: RecipeStats) -> RecipeSummary:
+    base = {k: getattr(recipe, k) for k in RecipeSummary.model_fields if hasattr(recipe, k)}
+    return RecipeSummary.model_validate({**base, **_fields(recipe, user, stats)})
+
+
+def _detail(db: DB, recipe: Recipe, user: User | None) -> RecipeOut:
+    stats = stats_for(db, [recipe.id], user)[recipe.id]
+    base = {k: getattr(recipe, k) for k in RecipeOut.model_fields if hasattr(recipe, k)}
+    return RecipeOut.model_validate({**base, **_fields(recipe, user, stats)})
 
 
 def _get_by_slug(db: DB, slug: str) -> Recipe:
@@ -120,6 +125,23 @@ def _delete_orphan_tags(db: DB) -> None:
         db.delete(tag)
 
 
+_EPOCH = datetime.min.replace(tzinfo=UTC)
+
+
+def _sort_key(sort: str, recipe: Recipe, stats: RecipeStats):
+    """Sort keys for the orderings that depend on ratings and the cooking log."""
+    if sort == "rating":
+        return (-(stats.avg_rating or 0), -stats.rating_count, recipe.title.lower())
+    if sort == "cooked":
+        return (-stats.cooked_count, recipe.title.lower())
+    if sort == "last_cooked":
+        last = stats.my_last_cooked_at
+        if last is not None and last.tzinfo is None:
+            last = last.replace(tzinfo=UTC)
+        return (-(last or _EPOCH).timestamp(), recipe.title.lower())
+    return None
+
+
 @router.get("/recipes", response_model=list[RecipeSummary])
 def list_recipes(
     user: OptionalUser,
@@ -127,23 +149,15 @@ def list_recipes(
     q: str | None = None,
     tag: str | None = None,
     author: int | None = None,
-    sort: str = "updated",
+    sort: str | None = None,
 ) -> list[RecipeSummary]:
+    """List recipes. Without an explicit sort, searches rank by relevance, else by update."""
     query = select(Recipe).options(*_LOAD)
-    if q:
-        like = f"%{q.strip()}%"
-        ingredient_match = (
-            select(IngredientGroup.recipe_id).join(Ingredient).where(Ingredient.name.ilike(like))
-        )
-        tag_match = select(recipe_tags.c.recipe_id).join(Tag).where(Tag.name.ilike(like))
-        query = query.where(
-            or_(
-                Recipe.title.ilike(like),
-                Recipe.description.ilike(like),
-                Recipe.id.in_(ingredient_match),
-                Recipe.id.in_(tag_match),
-            )
-        )
+    ranked: list[int] | None = None
+    if q and q.strip():
+        ranked = search.search_ids(db, q)
+        if ranked is not None:
+            query = query.where(Recipe.id.in_(ranked))
     if tag:
         query = query.where(Recipe.tags.any(func.lower(Tag.name) == tag.lower()))
     if author is not None:
@@ -152,12 +166,20 @@ def list_recipes(
         "title": func.lower(Recipe.title).asc(),
         "created": Recipe.created_at.desc(),
     }.get(sort, Recipe.updated_at.desc())
-    return [_summary(r, user) for r in db.scalars(query.order_by(order))]
+    recipes = list(db.scalars(query.order_by(order)))
+    stats = stats_for(db, [r.id for r in recipes], user)
+
+    if sort in ("rating", "cooked", "last_cooked"):
+        recipes.sort(key=lambda r: _sort_key(sort, r, stats[r.id]))
+    elif ranked is not None and sort in (None, "relevance"):
+        position = {rid: i for i, rid in enumerate(ranked)}
+        recipes.sort(key=lambda r: position[r.id])
+    return [_summary(r, user, stats[r.id]) for r in recipes]
 
 
 @router.get("/recipes/{slug}", response_model=RecipeOut)
 def get_recipe(slug: str, user: OptionalUser, db: DB) -> RecipeOut:
-    return _detail(_get_by_slug(db, slug), user)
+    return _detail(db, _get_by_slug(db, slug), user)
 
 
 @router.post("/recipes", response_model=RecipeOut, status_code=status.HTTP_201_CREATED)
@@ -165,8 +187,10 @@ def create_recipe(data: RecipeIn, user: CurrentUser, db: DB) -> RecipeOut:
     recipe = Recipe(slug=_unique_slug(db, data.title), author_id=user.id)
     _apply(db, recipe, data)
     db.add(recipe)
+    db.flush()
+    search.index_recipe(db, recipe)
     db.commit()
-    return _detail(_get_by_slug(db, recipe.slug), user)
+    return _detail(db, _get_by_slug(db, recipe.slug), user)
 
 
 @router.put("/recipes/{slug}", response_model=RecipeOut)
@@ -179,8 +203,9 @@ def update_recipe(slug: str, data: RecipeIn, user: CurrentUser, db: DB) -> Recip
     _apply(db, recipe, data)
     db.flush()
     _delete_orphan_tags(db)
+    search.index_recipe(db, recipe)
     db.commit()
-    return _detail(_get_by_slug(db, recipe.slug), user)
+    return _detail(db, _get_by_slug(db, recipe.slug), user)
 
 
 @router.delete("/recipes/{slug}", status_code=status.HTTP_204_NO_CONTENT)
@@ -188,10 +213,43 @@ def delete_recipe(slug: str, user: CurrentUser, db: DB) -> None:
     recipe = _get_by_slug(db, slug)
     if not can_edit(user, recipe):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only delete your own recipes")
+    photo = recipe.photo
+    search.remove_recipe(db, recipe.id)
     db.delete(recipe)
     db.flush()
     _delete_orphan_tags(db)
     db.commit()
+    photos.delete_photo(photo)
+
+
+def _editable(db: DB, slug: str, user: User) -> Recipe:
+    recipe = _get_by_slug(db, slug)
+    if not can_edit(user, recipe):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only edit your own recipes")
+    return recipe
+
+
+@router.put("/recipes/{slug}/photo", response_model=RecipeOut)
+async def upload_photo(slug: str, file: UploadFile, user: CurrentUser, db: DB) -> RecipeOut:
+    recipe = _editable(db, slug, user)
+    data = await file.read(photos.MAX_UPLOAD_BYTES + 1)
+    try:
+        name = photos.save_photo(data, recipe.id)
+    except photos.InvalidImage as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    old, recipe.photo = recipe.photo, name
+    db.commit()
+    photos.delete_photo(old)
+    return _detail(db, recipe, user)
+
+
+@router.delete("/recipes/{slug}/photo", response_model=RecipeOut)
+def delete_recipe_photo(slug: str, user: CurrentUser, db: DB) -> RecipeOut:
+    recipe = _editable(db, slug, user)
+    old, recipe.photo = recipe.photo, None
+    db.commit()
+    photos.delete_photo(old)
+    return _detail(db, recipe, user)
 
 
 @router.get("/tags", response_model=list[TagOut])

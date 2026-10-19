@@ -1,18 +1,20 @@
 import html
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from . import photos
 from .config import get_settings
 from .db import get_db, get_engine
 from .migrations import upgrade_database
 from .models import IngredientGroup, Recipe, Role, User
-from .routers import auth, recipes, users
+from .routers import auth, journal, recipes, users
 from .security import hash_password
 
 
@@ -51,6 +53,18 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(recipes.router)
+app.include_router(journal.router)
+
+
+@app.get("/media/photos/{name}", include_in_schema=False)
+def photo(name: str) -> FileResponse:
+    if not re.fullmatch(r"\d+-[0-9a-f]+(-thumb)?\.webp", name):
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    path = photos.photos_dir() / name
+    if not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    # File names change with every upload, so they can be cached for good.
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @app.get("/api/health")
@@ -79,6 +93,9 @@ def _recipe_meta(slug: str) -> str:
             "og:type": "article",
             "og:url": f"{settings.base_url.rstrip('/')}/recipes/{recipe.slug}",
         }
+        photo_url, _ = photos.photo_urls(recipe.photo)
+        if photo_url:
+            tags["og:image"] = settings.base_url.rstrip("/") + photo_url
         meta = "".join(
             f'<meta property="{k}" content="{html.escape(v, quote=True)}">' for k, v in tags.items()
         )
