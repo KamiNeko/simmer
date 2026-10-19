@@ -1,8 +1,8 @@
 # Simmer
 
-A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link or pasted text, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups.
+A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link or pasted text, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, and a cooking view keeps the screen on.
 
-Milestones 1 to 3 of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done. Unit conversion and the cooking view follow next.
+All four milestones of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done.
 
 ## Run it with Docker Compose
 
@@ -44,6 +44,18 @@ If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first vi
 | Rate, log cooking, keep private notes | | ✓ | ✓ |
 | Import recipes and use Tidy up | | ✓ | ✓ |
 | Manage accounts and AI providers | | | ✓ |
+
+## Units and cooking
+
+Amounts are stored as written and only converted for display, so switching never loses anything. Each user picks a default (metric, US or as written) in **Settings**, and every recipe page has a toggle and a servings scaler. Visitors' last choice is remembered in their browser.
+
+- Weights convert both ways (lb and oz to g and kg).
+- Cups and other volumes become grams when the ingredient has a density (imports fill it in), otherwise millilitres.
+- Tablespoons and teaspoons stay spoons below about 20 g, which keeps spices and sauces readable.
+- Counted things (eggs, cloves, cans) never convert.
+- Oven temperatures and sizes in the steps convert too (425°F to 220 °C, 9x13-inch to 23 × 33 cm).
+
+**Cook** opens a full-screen view with large text, ingredient checkboxes and one highlighted step at a time (arrow keys or the Back and Next buttons). The screen stays on while it is open, in browsers that support it.
 
 ## Importing recipes
 

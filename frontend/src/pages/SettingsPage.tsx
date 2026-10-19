@@ -66,7 +66,7 @@ export function SettingsPage() {
                   <SelectItem value="original">As written in the recipe</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-muted-foreground text-xs">Unit conversion arrives in a later milestone.</p>
+              <p className="text-muted-foreground text-xs">How amounts, temperatures and sizes are shown by default. Each recipe page can switch for a single view.</p>
             </div>
           </div>
           <Button type="submit" size="sm" disabled={profile.isPending}>
