@@ -1,8 +1,10 @@
+import base64
+from collections.abc import Sequence
 from typing import Any
 
 import openai
 
-from .base import MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, LLMError
+from .base import MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, Image, LLMError
 
 
 class OpenAIProvider:
@@ -12,12 +14,23 @@ class OpenAIProvider:
         self.model = model
         self._client = openai.OpenAI(api_key=api_key, timeout=TIMEOUT_SECONDS)
 
-    def generate_json(self, system: str, prompt: str, schema: dict[str, Any]) -> str:
+    def generate_json(
+        self, system: str, prompt: str, schema: dict[str, Any], images: Sequence[Image] = ()
+    ) -> str:
+        content: list[dict[str, Any]] = [
+            {
+                "type": "input_image",
+                "image_url": f"data:{image.media_type};base64,"
+                + base64.b64encode(image.data).decode(),
+            }
+            for image in images
+        ]
+        content.append({"type": "input_text", "text": prompt})
         try:
             response = self._client.responses.create(
                 model=self.model,
                 instructions=system,
-                input=prompt,
+                input=[{"role": "user", "content": content}],
                 max_output_tokens=MAX_OUTPUT_TOKENS,
                 text={
                     "format": {

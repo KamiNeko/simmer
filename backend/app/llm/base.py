@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -16,11 +17,19 @@ class LLMError(Exception):
     """A provider call failed in a way worth showing to the user."""
 
 
+@dataclass(frozen=True)
+class Image:
+    data: bytes
+    media_type: str
+
+
 class Provider(Protocol):
     kind: str
     model: str
 
-    def generate_json(self, system: str, prompt: str, schema: dict[str, Any]) -> str:
+    def generate_json(
+        self, system: str, prompt: str, schema: dict[str, Any], images: Sequence[Image] = ()
+    ) -> str:
         """Return the model's reply as JSON text matching the schema."""
         ...
 

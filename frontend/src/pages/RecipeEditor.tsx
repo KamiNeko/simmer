@@ -286,7 +286,7 @@ export function RecipeEditor() {
 
 function ImportBanner({ info }: { info: ImportState }) {
   const { result, request } = info;
-  let site = "the pasted text";
+  let site = request.photos ? `your ${request.photos.length === 1 ? "photo" : "photos"}` : "the pasted text";
   if (request.url) {
     try {
       site = new URL(request.url).hostname.replace(/^www\./, "");

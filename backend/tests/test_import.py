@@ -77,9 +77,11 @@ class FakeProvider:
     def __init__(self, replies):
         self.replies = list(replies)
         self.prompts: list[str] = []
+        self.images: list = []
 
-    def generate_json(self, system, prompt, schema):
+    def generate_json(self, system, prompt, schema, images=()):
         self.prompts.append(prompt)
+        self.images.append(list(images))
         reply = self.replies.pop(0)
         if isinstance(reply, Exception):
             raise reply
@@ -336,3 +338,38 @@ def test_photo_from_url(admin, monkeypatch):
     monkeypatch.setattr(importer, "fetch", lambda url, max_bytes=0: (b"nope", url, "text/html"))
     bad = admin.put(f"/api/recipes/{slug}/photo/from-url", json={"url": "https://example.com/"})
     assert bad.status_code == 400
+
+
+def _jpeg(size=(3000, 2000)):
+    buffer = io.BytesIO()
+    Image.new("RGB", size, "white").save(buffer, "JPEG")
+    return buffer.getvalue()
+
+
+def test_photo_import(admin, fake):
+    fake.replies = [AI_RECIPE]
+    files = [
+        ("files", ("page1.jpg", _jpeg(), "image/jpeg")),
+        ("files", ("page2.png", _jpeg((800, 600)), "image/png")),
+    ]
+    result = admin.post("/api/import/photos", files=files, data={"provider": "anthropic"}).json()
+    assert result["recipe"]["title"] == "Gochujang Chicken"
+    assert result["provider"] == "anthropic" and result["image_url"] is None
+    sent = fake.images[0]
+    assert [i.media_type for i in sent] == ["image/jpeg", "image/jpeg"]
+    # Large photos are scaled down before they go to the provider.
+    assert max(Image.open(io.BytesIO(sent[0].data)).size) == 2000
+
+
+def test_photo_import_errors(admin):
+    jpeg = [("files", ("page.jpg", _jpeg((400, 300)), "image/jpeg"))]
+    response = admin.post("/api/import/photos", files=jpeg)
+    assert response.status_code == 400 and "AI provider" in response.json()["detail"]
+
+    admin.put(
+        "/api/admin/ai/providers/openai", json={"api_key": "sk-openai-key-1", "model": "gpt-5"}
+    )
+    bad = [("files", ("notes.txt", b"hello", "text/plain"))]
+    assert admin.post("/api/import/photos", files=bad).status_code == 400
+    many = jpeg * 7
+    assert admin.post("/api/import/photos", files=many).status_code == 400
