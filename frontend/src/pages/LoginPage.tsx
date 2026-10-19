@@ -18,6 +18,7 @@ export function LoginPage() {
   const { refresh } = useAuth();
   const next = params.get("next");
   const login = useMutation({
+    meta: { inlineError: true },
     mutationFn: () => api.login(username, password),
     onSuccess: async () => {
       await refresh();

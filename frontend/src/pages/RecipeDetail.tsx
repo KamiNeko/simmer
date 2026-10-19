@@ -21,10 +21,11 @@ import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
+import { useRecipe } from "@/lib/queries";
 import { useAuth } from "@/lib/auth";
 import { convertText } from "@/lib/convert";
 import { formatNumber } from "@/lib/quantity";
-import { formatDate, formatMinutes, relativeDate } from "@/lib/utils";
+import { formatDate, formatMinutes, relativeDate, sectionHeading } from "@/lib/utils";
 
 function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -44,7 +45,7 @@ export function RecipeDetail() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [planning, setPlanning] = useState(false);
-  const recipe = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!) });
+  const recipe = useRecipe(slug);
   const view = useRecipeView(recipe.data);
   const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
   const listed = shopping.data?.recipes.find((e) => e.recipe.slug === slug);
@@ -56,7 +57,6 @@ export function RecipeDetail() {
         action: { label: "Open list", onClick: () => navigate("/shopping") },
       });
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const remove = useMutation({
@@ -67,7 +67,6 @@ export function RecipeDetail() {
       client.invalidateQueries({ queryKey: ["tags"] });
       navigate(`/${search}`);
     },
-    onError: (e) => toast.error(e.message),
   });
 
   if (recipe.isLoading) return <div className="text-muted-foreground p-8 text-sm">Loading…</div>;
@@ -86,8 +85,6 @@ export function RecipeDetail() {
       else next.add(key);
       return next;
     });
-  let sectionShown = "";
-
   return (
     <article>
       <div className="flex h-14 items-center gap-2 border-b px-4 md:px-6">
@@ -229,8 +226,7 @@ export function RecipeDetail() {
             {r.steps.length === 0 && <p className="text-muted-foreground text-sm">No steps yet.</p>}
             <ol className="space-y-5">
               {r.steps.map((step, i) => {
-                const heading = step.section && step.section !== sectionShown ? step.section : null;
-                sectionShown = step.section;
+                const heading = sectionHeading(r.steps, i);
                 return (
                   <li key={step.id ?? i}>
                     {heading && (

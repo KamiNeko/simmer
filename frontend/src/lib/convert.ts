@@ -40,7 +40,7 @@ export interface Amount {
   unit: string | null;
 }
 
-const roundTo = (value: number, step: number) => Math.max(step, Math.round(value / step) * step);
+const roundTo = (value: number, increment: number) => Math.max(increment, Math.round(value / increment) * increment);
 
 function grams(value: number): [number, string] {
   if (value >= 1000) return [roundTo(value / 1000, 0.05), "kg"];
@@ -138,9 +138,6 @@ export function formatAmount(amount: Amount): string {
       : formatQuantity(quantity, max);
   return [value, unitLabel(unit, quantity, max)].filter(Boolean).join(" ");
 }
-
-/** A scaled number for things like servings: 2.666 -> 2.67. */
-export const scaled = (value: number, scale: number) => Math.round(value * scale * 100) / 100;
 
 // Step text
 

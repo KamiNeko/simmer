@@ -1,38 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, CookingPot, Minus, MoreHorizontal, MoveRight, Plus, ShoppingBasket, StickyNote, Trash2, UtensilsCrossed } from "lucide-react";
+import { ChevronLeft, ChevronRight, CookingPot, MoreHorizontal, MoveRight, Plus, ShoppingBasket, StickyNote, Trash2, UtensilsCrossed } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { PlanDialog } from "@/components/PlanDialog";
+import { ServingsStepper } from "@/components/ServingsStepper";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api, type PlanEntry } from "@/lib/api";
 import { addDays, dayMonth, shortDay, today, weekday, weekDays, weekLabel, weekStart } from "@/lib/dates";
-import { formatNumber } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 
 import { PageFrame } from "./PageFrame";
 
 const VALID_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Whole servings, with halves below two (as on the recipe page). */
-const step = (value: number, direction: 1 | -1) =>
-  Math.max(0.5, Math.round((value + direction * ((direction === 1 ? value < 2 : value <= 2) ? 0.5 : 1)) * 2) / 2);
-
-function ServingsStepper({ title, servings, perServing, onChange, className }: { title: string; servings: number; perServing: boolean; onChange: (servings: number) => void; className?: string }) {
-  return (
-    <div className={cn("text-muted-foreground flex items-center rounded-lg border", className)}>
-      <button type="button" className="hover:text-foreground p-1.5 disabled:opacity-40" disabled={servings <= 0.5} onClick={() => onChange(step(servings, -1))} aria-label={`Fewer servings of ${title}`}>
-        <Minus className="size-3.5" />
-      </button>
-      <span className="min-w-12 text-center text-xs tabular-nums">{perServing ? `${formatNumber(servings)} serv.` : `× ${formatNumber(servings)}`}</span>
-      <button type="button" className="hover:text-foreground p-1.5" onClick={() => onChange(step(servings, 1))} aria-label={`More servings of ${title}`}>
-        <Plus className="size-3.5" />
-      </button>
-    </div>
-  );
-}
 
 function EntryRow({ entry, days, onChange, onRemove }: { entry: PlanEntry; days: string[]; onChange: (data: { day?: string; servings?: number }) => void; onRemove: () => void }) {
   const r = entry.recipe;
@@ -116,16 +98,14 @@ export function PlanPage() {
   const update = useMutation({
     mutationFn: ({ id, data }: { id: number; data: { day?: string; servings?: number } }) => api.planUpdate(id, data),
     onSuccess: refresh,
-    onError: (e) => toast.error(e.message),
   });
-  const remove = useMutation({ mutationFn: api.planDelete, onSuccess: refresh, onError: (e) => toast.error(e.message) });
+  const remove = useMutation({ mutationFn: api.planDelete, onSuccess: refresh });
   const toShopping = useMutation({
     mutationFn: () => api.planToShopping(start, end),
     onSuccess: (data) => {
       client.setQueryData(["shopping"], data);
       toast.success("The week's recipes are on your shopping list", { action: { label: "Open list", onClick: () => navigate("/shopping") } });
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const go = (week: string) => setParams(week === weekStart(today()) ? {} : { week });

@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Archive, ChevronRight, LogIn, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -14,12 +13,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useRecipe } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
 
 function useCrumb(): string | null {
   const { pathname } = useLocation();
   const { slug } = useParams();
-  const recipe = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!), enabled: !!slug });
+  const recipe = useRecipe(slug);
   if (pathname === "/new") return "New recipe";
   if (pathname === "/settings") return "Settings";
   if (pathname === "/admin/users") return "Users";

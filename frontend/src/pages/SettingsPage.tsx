@@ -24,7 +24,6 @@ export function SettingsPage() {
       refresh();
       toast.success("Settings saved");
     },
-    onError: (e) => toast.error(e.message),
   });
   const password = useMutation({
     mutationFn: () => api.changePassword(current, next),
@@ -33,7 +32,6 @@ export function SettingsPage() {
       setNext("");
       toast.success("Password changed");
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const onProfile = (e: FormEvent) => {

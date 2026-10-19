@@ -72,7 +72,6 @@ export function PlanDialog({
           action: { label: "Open plan", onClick: () => navigate(`/plan?week=${weekStart(entry.day)}`) },
         });
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const pick = (r: RecipeSummary) => {

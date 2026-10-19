@@ -1,13 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Sun, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { IngredientLine, useRecipeView, ViewControls } from "@/components/RecipeView";
 import { Button } from "@/components/ui/button";
-import { api, type UnitSystem } from "@/lib/api";
+import type { UnitSystem } from "@/lib/api";
+import { useRecipe } from "@/lib/queries";
 import { convertText } from "@/lib/convert";
-import { cn } from "@/lib/utils";
+import { cn, sectionHeading } from "@/lib/utils";
 
 /** Keep the screen on while cooking, where the browser supports it. */
 function useWakeLock() {
@@ -49,7 +49,7 @@ const UNITS: UnitSystem[] = ["metric", "us", "original"];
 export function CookingView() {
   const { slug } = useParams();
   const [params] = useSearchParams();
-  const recipe = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!) });
+  const recipe = useRecipe(slug);
   const servingsParam = Number(params.get("servings"));
   const unitsParam = params.get("units") as UnitSystem | null;
   const view = useRecipeView(recipe.data, {
@@ -95,8 +95,6 @@ export function CookingView() {
       else next.add(key);
       return next;
     });
-
-  let sectionShown = "";
 
   return (
     <div className="bg-panel flex h-full flex-col">
@@ -163,8 +161,7 @@ export function CookingView() {
           <h2 className="mb-2 hidden text-sm font-semibold tracking-wider uppercase md:block">Steps</h2>
           <ol className="space-y-3 pb-24">
             {steps.map((step, i) => {
-              const heading = step.section && step.section !== sectionShown ? step.section : null;
-              sectionShown = step.section;
+              const heading = sectionHeading(steps, i);
               const active = i === current;
               return (
                 <li key={step.id ?? i} ref={(el) => void (stepRefs.current[i] = el)}>

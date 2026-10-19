@@ -1,10 +1,11 @@
 import { Minus, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Ingredient, Recipe, UnitSystem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { convertAmount, formatAmount } from "@/lib/convert";
-import { formatNumber, formatQuantity, unitLabel } from "@/lib/quantity";
+import { formatNumber, formatQuantity, stepServings, unitLabel } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 
 const UNIT_KEY = "simmer-units";
@@ -22,12 +23,8 @@ function storedUnits(): UnitSystem | null {
 export function useRecipeView(recipe: Recipe | undefined, initial?: { servings?: number; units?: UnitSystem }) {
   const { user } = useAuth();
   const [units, setUnitsState] = useState<UnitSystem>(initial?.units ?? user?.unit_system ?? storedUnits() ?? "metric");
+  // Until the reader changes it, servings follow the recipe's own.
   const [servings, setServings] = useState<number | null>(initial?.servings ?? null);
-
-  // Start from the recipe's own servings once it has loaded.
-  useEffect(() => {
-    if (recipe && servings === null) setServings(recipe.servings ?? 1);
-  }, [recipe, servings]);
 
   const setUnits = (value: UnitSystem) => {
     setUnitsState(value);
@@ -53,12 +50,6 @@ const UNIT_OPTIONS: { value: UnitSystem; label: string; short?: string; title: s
   { value: "original", label: "Original", short: "Orig.", title: "As written in the recipe" },
 ];
 
-/** Whole servings, with halves below two. */
-function stepFor(value: number, direction: 1 | -1) {
-  const step = (direction === 1 ? value < 2 : value <= 2) ? 0.5 : 1;
-  return Math.max(0.5, Math.round((value + direction * step) * 2) / 2);
-}
-
 export function ViewControls({ view, large = false }: { view: RecipeViewState; large?: boolean }) {
   const label = view.hasServings ? (view.servings === 1 ? "serving" : "servings") : "× recipe";
   const size = large ? "h-10" : "h-8";
@@ -67,7 +58,7 @@ export function ViewControls({ view, large = false }: { view: RecipeViewState; l
       <div className={cn("bg-card flex items-center rounded-lg border", size)}>
         <button
           type="button"
-          onClick={() => view.setServings(stepFor(view.servings, -1))}
+          onClick={() => view.setServings(stepServings(view.servings, -1))}
           disabled={view.servings <= 0.5}
           className="text-muted-foreground hover:text-foreground flex h-full w-7 items-center justify-center disabled:opacity-40"
           aria-label="Fewer servings"
@@ -80,7 +71,7 @@ export function ViewControls({ view, large = false }: { view: RecipeViewState; l
         </span>
         <button
           type="button"
-          onClick={() => view.setServings(stepFor(view.servings, 1))}
+          onClick={() => view.setServings(stepServings(view.servings, 1))}
           className="text-muted-foreground hover:text-foreground flex h-full w-7 items-center justify-center"
           aria-label="More servings"
         >
@@ -137,15 +128,7 @@ export function IngredientLine({
   return (
     <li>
       <label className={cn("flex cursor-pointer items-start gap-3", large ? "py-2.5" : "py-1.5")}>
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onToggle}
-          className={cn(
-            "border-input checked:bg-primary checked:border-primary grid shrink-0 cursor-pointer appearance-none place-content-center rounded border-[1.5px] transition-colors before:hidden before:h-2.5 before:w-1.5 before:translate-y-[-1px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-white before:content-[''] checked:before:block",
-            large ? "mt-1 size-5.5" : "mt-0.5 size-4.5",
-          )}
-        />
+        <Checkbox checked={checked} onChange={onToggle} className={large ? "mt-1 size-5.5" : "mt-0.5"} />
         <span className={cn("leading-snug", checked && "text-muted-foreground line-through")}>
           {amount && (
             <span className="font-semibold" title={converted ? `${original} in the recipe` : undefined}>

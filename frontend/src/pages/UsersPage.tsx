@@ -28,7 +28,6 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       setForm({ username: "", display_name: "", password: "", role: "member" });
       onOpenChange(false);
     },
-    onError: (e) => toast.error(e.message),
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -87,7 +86,6 @@ function ResetPasswordDialog({ user, onClose }: { user: User | null; onClose: ()
       setPassword("");
       onClose();
     },
-    onError: (e) => toast.error(e.message),
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -121,7 +119,6 @@ export function UsersPage() {
   const update = useMutation({
     mutationFn: ({ id, role }: { id: number; role: Role }) => api.updateUser(id, { role }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["users"] }),
-    onError: (e) => toast.error(e.message),
   });
   const remove = useMutation({
     mutationFn: (id: number) => api.deleteUser(id),
@@ -129,7 +126,6 @@ export function UsersPage() {
       client.invalidateQueries({ queryKey: ["users"] });
       toast.success("Account deleted");
     },
-    onError: (e) => toast.error(e.message),
   });
 
   if (!isAdmin) return <Navigate to="/" replace />;

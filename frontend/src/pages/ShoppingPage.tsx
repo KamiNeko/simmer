@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Minus, Plus, ShoppingBasket, Trash2, X } from "lucide-react";
+import { Copy, Plus, ShoppingBasket, Trash2, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -14,11 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ServingsStepper } from "@/components/ServingsStepper";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { api, type ShoppingList } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatNumber } from "@/lib/quantity";
 import { combineIngredients, listAsText } from "@/lib/shopping";
 import { cn } from "@/lib/utils";
 
@@ -28,12 +29,7 @@ function CheckRow({ checked, onToggle, children, onRemove }: { checked: boolean;
   return (
     <li className="group flex items-start gap-3 py-2">
       <label className="flex flex-1 cursor-pointer items-start gap-3">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onToggle}
-          className="border-input checked:bg-primary checked:border-primary mt-0.5 grid size-5 shrink-0 cursor-pointer appearance-none place-content-center rounded border-[1.5px] transition-colors before:hidden before:h-2.5 before:w-1.5 before:translate-y-[-1px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-white before:content-[''] checked:before:block"
-        />
+        <Checkbox checked={checked} onChange={onToggle} className="mt-0.5 size-5" />
         <span className={cn("leading-snug", checked && "text-muted-foreground line-through")}>{children}</span>
       </label>
       {onRemove && (
@@ -55,7 +51,6 @@ export function ShoppingPage() {
   const update = useMutation({
     mutationFn: (fn: () => Promise<ShoppingList>) => fn(),
     onSuccess: (data) => client.setQueryData(["shopping"], data),
-    onError: (e) => toast.error(e.message),
   });
 
   if (!list.data) return <PageFrame title="Shopping list">{list.isError ? "Couldn't load the list." : null}</PageFrame>;
@@ -128,26 +123,13 @@ export function ShoppingPage() {
                 <Link to={`/recipes/${recipe.slug}`} className="max-w-48 truncate font-medium hover:underline">
                   {recipe.title}
                 </Link>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground ml-1 p-1 disabled:opacity-40"
-                  disabled={servings <= 0.5}
-                  onClick={() => update.mutate(() => api.shoppingPutRecipe(recipe.slug, Math.max(0.5, servings - (servings <= 2 ? 0.5 : 1))))}
-                  aria-label={`Fewer servings of ${recipe.title}`}
-                >
-                  <Minus className="size-3.5" />
-                </button>
-                <span className="text-muted-foreground min-w-14 text-center text-xs tabular-nums">
-                  {recipe.servings ? `${formatNumber(servings)} serv.` : `× ${formatNumber(servings)}`}
-                </span>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground p-1"
-                  onClick={() => update.mutate(() => api.shoppingPutRecipe(recipe.slug, servings + (servings < 2 ? 0.5 : 1)))}
-                  aria-label={`More servings of ${recipe.title}`}
-                >
-                  <Plus className="size-3.5" />
-                </button>
+                <ServingsStepper
+                  title={recipe.title}
+                  servings={servings}
+                  perServing={!!recipe.servings}
+                  onChange={(value) => update.mutate(() => api.shoppingPutRecipe(recipe.slug, value))}
+                  className="ml-1 border-0"
+                />
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground p-1"

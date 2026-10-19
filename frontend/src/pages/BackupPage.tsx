@@ -26,7 +26,6 @@ export function BackupPage() {
       const n = result.imported.length;
       toast.success(n ? `Imported ${n} ${n === 1 ? "recipe" : "recipes"}` : "Nothing new to import");
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const submit = (e: FormEvent) => {

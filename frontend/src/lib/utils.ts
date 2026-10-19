@@ -29,3 +29,9 @@ export function formatMinutes(minutes: number | null | undefined): string | null
   const m = minutes % 60;
   return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`;
 }
+
+/** The section name to show above step i: only where a new section starts. */
+export function sectionHeading(steps: { section: string }[], i: number): string | null {
+  const section = steps[i].section;
+  return section && section !== steps[i - 1]?.section ? section : null;
+}

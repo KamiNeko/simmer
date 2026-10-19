@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatNumber, formatQuantity, parseQuantity, unitLabel } from "./quantity";
+import { formatNumber, formatQuantity, parseQuantity, stepServings, unitLabel } from "./quantity";
 
 describe("formatNumber", () => {
   it.each([
@@ -37,4 +37,18 @@ describe("unitLabel", () => {
   it("uses the upper end of a range", () => expect(unitLabel("clove", 1, 2)).toBe("cloves"));
   it("never pluralises abbreviations", () => expect(unitLabel("tbsp", 3, null)).toBe("tbsp"));
   it("labels fluid ounces", () => expect(unitLabel("fl_oz", 4, null)).toBe("fl oz"));
+});
+
+describe("stepServings", () => {
+  it.each([
+    [1, 1, 1.5],
+    [1.5, 1, 2],
+    [2, 1, 3],
+    [4, 1, 5],
+    [3, -1, 2],
+    [2, -1, 1.5],
+    [1, -1, 0.5],
+    [0.5, -1, 0.5],
+    [2.3, 1, 3.5],
+  ] as const)("%s step %s is %s", (value, direction, expected) => expect(stepServings(value, direction)).toBe(expected));
 });
