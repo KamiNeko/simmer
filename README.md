@@ -1,8 +1,8 @@
 # Simmer
 
-A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked.
+A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link or pasted text, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups.
 
-Milestones 1 and 2 of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done. LLM import and unit conversion follow next.
+Milestones 1 to 3 of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done. Unit conversion and the cooking view follow next.
 
 ## Run it with Docker Compose
 
@@ -19,7 +19,7 @@ Simmer listens on port 8080. Put it behind your reverse proxy (Nginx Proxy Manag
 
 If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first visit shows a setup screen to create the admin account. Further accounts are created by the admin under **Users**; there is no public sign-up.
 
-**Backup:** everything lives in `./data` (the SQLite database and recipe photos). Copy that folder.
+**Backup:** everything lives in `./data` (the SQLite database, recipe photos and, unless you set `SIMMER_SECRET_KEY`, the generated `secret.key` that encrypts the AI keys). Copy that folder.
 
 **Updates:** `git pull && docker compose up -d --build`. Database migrations run automatically on start.
 
@@ -28,7 +28,7 @@ If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first vi
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SIMMER_ADMIN_USERNAME`, `SIMMER_ADMIN_PASSWORD` | unset | Admin account created on first start |
-| `SIMMER_SECRET_KEY` | `change-me` | Secret for encrypting stored API keys (used from milestone 3) |
+| `SIMMER_SECRET_KEY` | generated into `data/secret.key` | Encrypts the stored AI provider keys. If it changes, re-enter the keys |
 | `SIMMER_BASE_URL` | `http://localhost:8080` | Public URL, used in link previews |
 | `SIMMER_COOKIE_SECURE` | `false` | Send the login cookie over HTTPS only |
 | `SIMMER_DATA_DIR` | `/data` in Docker | Where the database and photos are stored |
@@ -42,7 +42,18 @@ If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first vi
 | Edit or delete recipes | | own | all |
 | See average rating and cooked count | ✓ | ✓ | ✓ |
 | Rate, log cooking, keep private notes | | ✓ | ✓ |
-| Manage accounts | | | ✓ |
+| Import recipes and use Tidy up | | ✓ | ✓ |
+| Manage accounts and AI providers | | | ✓ |
+
+## Importing recipes
+
+Use the import button next to **New** and paste a link or the recipe text. Simmer reads the recipe data most recipe sites embed (including ingredient headings from WP Recipe Maker and Tasty Recipes), hands it to the AI, and opens the result in the editor with each ingredient's source line beside it. Nothing is saved until you press Save; the page's photo is downloaded then.
+
+The admin adds API keys under **AI providers** (Anthropic, OpenAI, Google Gemini), picks the model and the default, and can test the connection. Keys are stored encrypted and never sent back to the browser. The import screen can switch provider, and the review screen can re-import with another one when a result looks wrong.
+
+Without any provider, links still import from the page's recipe data, without grouping fixes or densities. Pasted text and **Tidy up** (which splits typed ingredient lines into fields and suggests groups) need a provider.
+
+Imports only fetch public addresses, so the import can't be used to reach services on your home network.
 
 ## Development
 

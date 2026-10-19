@@ -14,10 +14,16 @@ dependencies = [
     "argon2-cffi>=23.1",
     "python-multipart>=0.0.17",
     "pillow>=11.0",
+    "httpx>=0.28",
+    "beautifulsoup4>=4.12",
+    "cryptography>=43",
+    "anthropic>=1.15,<2",
+    "openai>=3.35,<4",
+    "google-genai>=2.31,<3",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "httpx>=0.28", "ruff>=0.8"]
+dev = ["pytest>=8.3", "ruff>=0.8"]
 
 [build-system]
 requires = ["hatchling"]

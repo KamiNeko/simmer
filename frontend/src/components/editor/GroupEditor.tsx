@@ -59,6 +59,7 @@ export function GroupEditor({
   onMove,
   isFirst,
   isLast,
+  showSource = false,
 }: {
   group: GroupDraft;
   onChange: (group: GroupDraft) => void;
@@ -66,6 +67,8 @@ export function GroupEditor({
   onMove: (direction: -1 | 1) => void;
   isFirst: boolean;
   isLast: boolean;
+  /** Show each ingredient's source line, for checking an import. */
+  showSource?: boolean;
 }) {
   const [pasting, setPasting] = useState(false);
   const setRows = (rows: IngredientRow[]) => onChange({ ...group, rows });
@@ -123,6 +126,11 @@ export function GroupEditor({
                 >
                   <X />
                 </Button>
+                {showSource && row.original_text && (
+                  <p className="text-muted-foreground col-span-full truncate pl-1 font-mono text-[11px]" title={row.original_text}>
+                    <span className="text-primary/70">source</span> {row.original_text}
+                  </p>
+                )}
               </div>
             </SortableItem>
           ))}

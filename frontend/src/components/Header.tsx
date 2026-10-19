@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, LogIn, LogOut, Menu, Moon, Search, Settings, Sun, Users } from "lucide-react";
+import { ChevronRight, LogIn, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -23,6 +23,8 @@ function useCrumb(): string | null {
   if (pathname === "/new") return "New recipe";
   if (pathname === "/settings") return "Settings";
   if (pathname === "/admin/users") return "Users";
+  if (pathname === "/admin/ai") return "AI providers";
+  if (pathname === "/import") return "Import recipe";
   if (slug) return recipe.data?.title ?? null;
   return null;
 }
@@ -121,6 +123,11 @@ export function Header({ onMenu }: { onMenu: () => void }) {
               {isAdmin && (
                 <DropdownMenuItem onSelect={() => navigate("/admin/users")}>
                   <Users /> Users
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem onSelect={() => navigate("/admin/ai")}>
+                  <Sparkles /> AI providers
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

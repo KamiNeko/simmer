@@ -11,9 +11,14 @@ export function EmptyState() {
       <CookingPot className="size-10 opacity-50" />
       <p className="text-sm">Pick a recipe from the list.</p>
       {user && (
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/new">Add a recipe</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/new">Add a recipe</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/import">Import from a link</Link>
+          </Button>
+        </div>
       )}
     </div>
   );

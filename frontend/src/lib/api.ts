@@ -107,6 +107,33 @@ export interface Tag {
   count: number;
 }
 
+export type ProviderKind = "anthropic" | "openai" | "google";
+
+export interface AIProvider {
+  kind: ProviderKind;
+  label: string;
+  model: string;
+  is_default: boolean;
+  configured: boolean;
+  key_hint: string;
+  default_model: string;
+}
+
+export interface ImportRequest {
+  url?: string;
+  text?: string;
+  /** A provider kind, "none" to skip AI, or undefined for the default. */
+  provider?: string;
+}
+
+export interface ImportResult {
+  recipe: RecipeInput;
+  image_url: string | null;
+  provider: ProviderKind | null;
+  model: string | null;
+  warning: string | null;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -185,6 +212,18 @@ export const api = {
   updateComment: (id: number, data: { text?: string; done?: boolean }) =>
     request<Comment>("PATCH", `/api/comments/${id}`, data),
   deleteComment: (id: number) => request<void>("DELETE", `/api/comments/${id}`),
+
+  photoFromUrl: (slug: string, url: string) =>
+    request<Recipe>("PUT", `/api/recipes/${encodeURIComponent(slug)}/photo/from-url`, { url }),
+
+  aiProviders: () => request<AIProvider[]>("GET", "/api/ai/providers"),
+  adminProviders: () => request<AIProvider[]>("GET", "/api/admin/ai/providers"),
+  saveProvider: (kind: ProviderKind, data: { api_key?: string; model: string; is_default: boolean }) =>
+    request<AIProvider>("PUT", `/api/admin/ai/providers/${kind}`, data),
+  deleteProvider: (kind: ProviderKind) => request<void>("DELETE", `/api/admin/ai/providers/${kind}`),
+  testProvider: (kind: ProviderKind) => request<{ status: string }>("POST", `/api/admin/ai/providers/${kind}/test`),
+  importRecipe: (data: ImportRequest) => request<ImportResult>("POST", "/api/import", data),
+  tidy: (recipe: RecipeInput, provider?: string) => request<RecipeInput>("POST", "/api/ai/tidy", { recipe, provider }),
 
   tags: () => request<Tag[]>("GET", "/api/tags"),
   parseIngredients: (lines: string[]) => request<Ingredient[]>("POST", "/api/parse-ingredients", { lines }),

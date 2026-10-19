@@ -7,11 +7,11 @@ from fastapi import APIRouter, HTTPException, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from .. import photos, search
+from .. import importer, photos, search
 from ..deps import DB, CurrentUser, OptionalUser
 from ..ingredient_parser import parse_ingredient
 from ..models import Ingredient, IngredientGroup, Recipe, Step, Tag, User, recipe_tags
-from ..schemas import ParseIn, RecipeIn, RecipeOut, RecipeSummary, TagOut
+from ..schemas import ParseIn, PhotoFromUrl, RecipeIn, RecipeOut, RecipeSummary, TagOut
 from ..stats import RecipeStats, stats_for
 
 router = APIRouter(prefix="/api", tags=["recipes"])
@@ -236,6 +236,21 @@ async def upload_photo(slug: str, file: UploadFile, user: CurrentUser, db: DB) -
     try:
         name = photos.save_photo(data, recipe.id)
     except photos.InvalidImage as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    old, recipe.photo = recipe.photo, name
+    db.commit()
+    photos.delete_photo(old)
+    return _detail(db, recipe, user)
+
+
+@router.put("/recipes/{slug}/photo/from-url", response_model=RecipeOut)
+def photo_from_url(slug: str, data: PhotoFromUrl, user: CurrentUser, db: DB) -> RecipeOut:
+    """Download a photo from the web, used for the image of an imported recipe."""
+    recipe = _editable(db, slug, user)
+    try:
+        body, _, _ = importer.fetch(str(data.url), max_bytes=photos.MAX_UPLOAD_BYTES)
+        name = photos.save_photo(body, recipe.id)
+    except (importer.FetchError, photos.InvalidImage) as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     old, recipe.photo = recipe.photo, name
     db.commit()

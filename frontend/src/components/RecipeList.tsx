@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownUp, Check, ChefHat, Plus, Search, UtensilsCrossed } from "lucide-react";
+import { ArrowDownUp, Check, ChefHat, Download, Plus, Search, UtensilsCrossed } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
@@ -80,6 +80,13 @@ export function RecipeList() {
                   ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            {user && (
+              <Button size="icon-sm" variant="outline" asChild>
+                <Link to="/import" title="Import recipe" aria-label="Import recipe">
+                  <Download />
+                </Link>
+              </Button>
+            )}
             {user && (
               <Button size="sm" asChild>
                 <Link to="/new">

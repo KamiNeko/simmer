@@ -208,3 +208,48 @@ class Journal(BaseModel):
     rating: int | None
     cooks: list[CookOut]
     comments: list[CommentOut]
+
+
+# AI providers and import
+
+ProviderKind = Literal["anthropic", "openai", "google"]
+
+
+class ProviderOut(BaseModel):
+    kind: ProviderKind
+    label: str
+    model: str
+    is_default: bool
+    configured: bool
+    key_hint: str = ""
+    default_model: str
+
+
+class ProviderUpdate(BaseModel):
+    api_key: str | None = Field(default=None, min_length=8, max_length=400)
+    model: str = Field(min_length=1, max_length=128)
+    is_default: bool = False
+
+
+class ImportIn(BaseModel):
+    url: HttpUrl | None = None
+    text: str | None = Field(default=None, max_length=60_000)
+    # A provider kind, "none" to skip AI, or empty for the default provider.
+    provider: str | None = None
+
+
+class ImportOut(BaseModel):
+    recipe: RecipeIn
+    image_url: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    warning: str | None = None
+
+
+class TidyIn(BaseModel):
+    recipe: RecipeIn
+    provider: str | None = None
+
+
+class PhotoFromUrl(BaseModel):
+    url: HttpUrl
