@@ -1,39 +1,109 @@
+<div align="center">
+
 # Simmer
 
-A small, self-hosted recipe manager for a household. Recipe pages are public and read-only. People with an account add and edit recipes, rate them, log each time they cook one, and keep private notes such as "needs more salt" that they tick off once they have worked them into the recipe.
+**The recipe book for your household, on your own server.**
 
-- Recipes with ingredient groups (main, marinade, sauce, ...), photos, tags and full-text search.
-- Import from a link, pasted text or photos of cookbook pages, with Anthropic, OpenAI or Google Gemini sorting the ingredients into groups.
-- Amounts convert between metric, US and the original units and scale with the servings. A cooking view keeps the screen on.
-- A weekly meal plan shared by the household, and a shopping list that adds up the ingredients of several recipes.
-- Recipe export and import, and a full backup download for admins.
+Collect recipes from anywhere, cook from a calm full-screen view, plan the week and shop from one list.<br>
+Self-hosted, with nothing to install on your phone.
 
-All four milestones of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done. See [CHANGELOG.md](CHANGELOG.md) for what is in each release.
+[![CI](https://github.com/KamiNeko/simmer/actions/workflows/ci.yml/badge.svg)](https://github.com/KamiNeko/simmer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-3776ab.svg)](backend/pyproject.toml)
+[![React 19](https://img.shields.io/badge/react-19-149eca.svg)](frontend/package.json)
 
-## Documentation
+![A recipe in Simmer, with its photo, rating and cook log, in dark mode](docs/images/recipe-dark.png)
 
-- [Self-hosting](docs/self-hosting.md): Docker on a Proxmox LXC, reverse proxy examples, HTTPS, updates and troubleshooting.
-- [AI import](docs/ai-import.md): setting up providers and what each import sends to them.
-- [Architecture](docs/architecture.md): how the code is laid out and how to extend it.
-- [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
-- The API reference is served by Simmer itself at `/api/docs`.
+</div>
 
-## Run it with Docker Compose
+## Why Simmer?
 
-On your server (for example a Proxmox LXC with Docker):
+Family recipes end up scattered across bookmarks, screenshots, cookbooks and chat messages. Simmer puts them in one place that everyone at home can use, on a server you run yourself.
+
+- 🏠 **Yours.** One small Docker container with a SQLite file. No accounts elsewhere, no tracking, no ads.
+- 👀 **Public to read, private to change.** Anyone you share a link with can read a recipe. Adding and editing needs an account, and your notes and ratings stay yours.
+- ✨ **Imports that tidy up.** Paste a link, some text or photos of a cookbook page. An AI provider of your choice (Anthropic, OpenAI or Google Gemini) sorts the ingredients into groups and steps. It works without AI too, for sites that publish recipe data.
+- ⚖️ **Grams when you want them.** Recipes keep the units they were written in and convert on the fly, including cups of flour to grams.
+
+## Features
+
+| | |
+| :--- | :--- |
+| 📖 **Recipes** | Ingredient groups (main, marinade, sauce, ...), step sections, photos, tags, prep and cook times, and a source link. Drag to reorder while editing. |
+| 🔎 **Search** | Full-text search over titles, descriptions, ingredients and tags (`Ctrl+K`), with filters by tag and author and sorting by rating or how often you cook something. |
+| 📥 **Import** | From a link, pasted text or up to six photos. Review everything in the editor before saving. **Tidy up** cleans an existing recipe. |
+| ⚖️ **Units and servings** | Metric, US or as written, per person and per recipe. Scale servings up or down. Oven temperatures and pan sizes in the steps convert too. |
+| 👩‍🍳 **Cooking view** | Large text, one highlighted step at a time, ingredient checkboxes, keyboard navigation and a screen that stays on. |
+| ⭐ **Journal** | Rate recipes, log each time you cook them, and keep private notes like "needs more salt" that you tick off once you have worked them in. |
+| 🗓️ **Meal plan** | A shared week plan with recipes and notes such as "Leftovers". Send the whole week to the shopping list. |
+| 🛒 **Shopping list** | Adds up ingredients across recipes in your units, with your own extra items and tick-off as you shop. |
+| 💾 **Export and backup** | Download all recipes as a portable zip, import it elsewhere, or take a full backup of the database and photos. |
+| 🌗 **Light and dark mode** | Follows your system, or switch with one click. |
+| 📱 **Responsive** | Works on phones and tablets as well as on the desktop. |
+
+## Screenshots
+
+<table>
+  <tr>
+    <td colspan="2"><img src="docs/images/cooking.png" alt="Cooking view with ingredients on the left and the current step highlighted"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>The cooking view: one step at a time, ingredients to tick off</em></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/recipe-light.png" alt="An American banana bread recipe shown in grams"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>A recipe written in cups, shown in grams</em></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/meal-plan.png" alt="Weekly meal plan"></td>
+    <td width="50%"><img src="docs/images/shopping-list.png" alt="Shopping list adding up three recipes"></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Meal plan for the week</em></td>
+    <td align="center"><em>One shopping list for several recipes</em></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/import.png" alt="Importing a recipe from a link"></td>
+    <td width="50%"><img src="docs/images/recipe-ingredients.png" alt="Ingredient groups, step sections and private notes"></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Import from a link, text or photos</em></td>
+    <td align="center"><em>Ingredient groups, step sections and private notes</em></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/mobile-recipe.png" alt="Recipe on a phone" width="250"></td>
+    <td align="center"><img src="docs/images/mobile-cooking.png" alt="Cooking view on a phone" width="250"></td>
+    <td align="center"><img src="docs/images/mobile-plan.png" alt="Meal plan on a phone" width="250"></td>
+  </tr>
+  <tr>
+    <td colspan="3" align="center"><em>On a phone</em></td>
+  </tr>
+</table>
+
+## Getting started
+
+You need Docker with Docker Compose, for example on a Proxmox LXC or a small home server.
 
 ```sh
 git clone https://github.com/KamiNeko/simmer.git && cd simmer
-cp .env.example .env        # set the base URL, and optionally the admin account and secret key
-mkdir -p data && sudo chown 1000:1000 data   # the container runs as uid 1000
+cp .env.example .env                          # set SIMMER_BASE_URL, and optionally an admin account
+mkdir -p data && sudo chown 1000:1000 data    # the container runs as uid 1000
 docker compose up -d --build
 ```
 
-Simmer listens on port 8080. Put it behind a reverse proxy for HTTPS. [docs/self-hosting.md](docs/self-hosting.md) has Caddy and nginx examples and explains how to bind the port to localhost.
+Open `http://<your-server>:8080`. Without `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` in `.env`, the first visit asks you to create the admin account. The admin then adds everyone else under **Users**; there is no public sign-up.
 
-If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first visit shows a setup screen to create the admin account. These two variables are only used while there are no users at all, so changing them later does nothing. The admin creates further accounts under **Users**. There is no public sign-up.
+> [!IMPORTANT]
+> Passwords and the login cookie travel with every request. Put Simmer behind a reverse proxy with **HTTPS** (Caddy, nginx, Nginx Proxy Manager, ...) before you use it outside your home network, and set `SIMMER_BASE_URL` to the `https://` address. [docs/self-hosting.md](docs/self-hosting.md) has ready-made proxy configs, including the upload size and timeout that imports need.
 
-## Configuration
+To use AI imports, an admin adds an API key under **AI providers**.
+
+### Configuration
 
 Set these in `.env` next to `docker-compose.yml`.
 
@@ -50,7 +120,15 @@ Set these in `.env` next to `docker-compose.yml`.
 
 `SIMMER_STATIC_DIR` and `FORWARDED_ALLOW_IPS` are set in the Dockerfile. You rarely need to change the first one.
 
-## Backup and restore
+### Updating
+
+```sh
+git pull && docker compose up -d --build
+```
+
+Database migrations run automatically on start. Take a backup first. More in [docs/self-hosting.md](docs/self-hosting.md#updating).
+
+### Backup and restore
 
 Everything lives in the data folder (`./data` with the compose file):
 
@@ -76,13 +154,26 @@ Clearing the folder matters: an old `simmer.db-wal` or `simmer.db-shm` next to a
 
 **Recipe export is not a backup.** **Download recipes** (any signed-in user) gives a zip with `recipes.json` and the photos, meant for moving recipes to another Simmer. It leaves out accounts, ratings, cook logs, notes, the meal plan, shopping lists and AI settings. **Import recipes** reads such a zip and skips recipes whose title already exists. The person importing becomes the author.
 
-## Updating
+## Documentation
 
-```sh
-git pull && docker compose up -d --build
-```
+- [Self-hosting](docs/self-hosting.md): Docker on a Proxmox LXC, reverse proxy examples, HTTPS, updates and troubleshooting.
+- [AI import](docs/ai-import.md): setting up providers and what each import sends to them.
+- [Architecture](docs/architecture.md): how the code is laid out and how to extend it.
+- [Security](SECURITY.md): how Simmer protects your data and how to report a problem.
+- [Changelog](CHANGELOG.md).
+- The API reference is served by Simmer itself at `/api/docs`.
 
-Database migrations run automatically on start. Take a backup first. More in [docs/self-hosting.md](docs/self-hosting.md#updating).
+## How it works
+
+**Units.** Amounts are stored as written and only converted for display, so switching never loses anything. Each user picks a default (metric, US or as written) in **Settings**, and every recipe page has a toggle and a servings scaler. Weights convert both ways. Cups become grams when the ingredient has a density (imports fill it in), otherwise millilitres. Tablespoons and teaspoons stay spoons below about 20 g. Counted things (eggs, cloves, cans) never convert. Oven temperatures and pan sizes in the steps convert too.
+
+**Cook** opens a full-screen view with large text, ingredient checkboxes and one highlighted step at a time. The screen stays on while it is open, in browsers that support it.
+
+**Meal plan** shows a week from Monday to Sunday. Add a recipe or a note such as "Leftovers" to any day, change servings or move entries. Everyone who is signed in shares the same plan. **Add week to shopping list** puts the week's recipes on your own list.
+
+**Shopping list.** **Add to list** on a recipe adds it at the servings you are viewing. The list adds up ingredients across recipes, shows them in your preferred units, and lets you add your own items and tick things off. Each user has their own list.
+
+**Importing.** Use the import button next to **New**. Nothing is saved until you press Save. [docs/ai-import.md](docs/ai-import.md) explains what each kind of import sends to the AI provider.
 
 ## Who can do what
 
@@ -97,37 +188,9 @@ Database migrations run automatically on start. Take a backup first. More in [do
 | Import recipes and use Tidy up | | ✓ | ✓ |
 | Manage accounts and AI providers, full backup | | | ✓ |
 
-## Using Simmer
+## Contributing
 
-**Units.** Amounts are stored as written and only converted for display, so switching never loses anything. Each user picks a default (metric, US or as written) in **Settings**, and every recipe page has a toggle and a servings scaler. Weights convert both ways. Cups become grams when the ingredient has a density (imports fill it in), otherwise millilitres. Tablespoons and teaspoons stay spoons below about 20 g. Counted things (eggs, cloves, cans) never convert. Oven temperatures and pan sizes in the steps convert too.
-
-**Cook** opens a full-screen view with large text, ingredient checkboxes and one highlighted step at a time. The screen stays on while it is open, in browsers that support it.
-
-**Meal plan** shows a week from Monday to Sunday. Add a recipe or a note such as "Leftovers" to any day, change servings or move entries. Everyone who is signed in shares the same plan. **Add week to shopping list** puts the week's recipes on your own list.
-
-**Shopping list.** **Add to list** on a recipe adds it at the servings you are viewing. The list adds up ingredients across recipes, shows them in your preferred units, and lets you add your own items and tick things off. Each user has their own list.
-
-**Importing.** Use the import button next to **New**. Nothing is saved until you press Save. See [docs/ai-import.md](docs/ai-import.md).
-
-## Development
-
-You need Python 3.12 or newer (CI and the Docker image use 3.13) and Node 22.
-
-Backend (FastAPI, SQLAlchemy, Alembic):
-
-```sh
-cd backend
-python -m venv .venv && .venv/bin/pip install -e '.[dev]'
-SIMMER_ADMIN_USERNAME=admin SIMMER_ADMIN_PASSWORD=password .venv/bin/uvicorn app.main:app --reload --port 8080
-```
-
-Frontend (React, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query):
-
-```sh
-cd frontend
-npm install
-npm run dev     # http://localhost:5173, proxies /api to port 8080
-```
+Simmer is a FastAPI + SQLAlchemy backend with a React, TypeScript, Tailwind CSS and shadcn/ui frontend. [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, code style, database migrations and refreshing the screenshots.
 
 CI runs these checks. Run them before you open a pull request:
 
@@ -143,20 +206,6 @@ npm test            # vitest
 npm run coverage    # vitest with coverage, fails below 40% of lines
 npm run build
 ```
-
-### Adding a database migration
-
-After changing `backend/app/models.py`, generate a migration. There is no `alembic.ini`, so call Alembic from Python. Give it the next revision id after the newest file in `backend/app/alembic/versions` (they are named `000N_name.py`):
-
-```sh
-cd backend
-.venv/bin/python -c "from alembic import command; from app.db import get_engine; from app.migrations import alembic_config, upgrade_database; e = get_engine(); upgrade_database(e); command.revision(alembic_config(e), message='describe change', autogenerate=True, rev_id='0007')"
-.venv/bin/ruff check --fix app/alembic && .venv/bin/ruff format app/alembic
-```
-
-This first brings your local `./data/simmer.db` up to date, then compares it with the models and writes `0007_describe_change.py`. Ruff then tidies the generated imports and quotes. Read the result before you commit it. The full-text search table (`recipe_search`, FTS5) is excluded from autogenerate, so changes to it are written by hand with `op.execute`. `tests/test_migrations.py` fails if the models and migrations disagree.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for code style and the pull request flow.
 
 ## License
 
