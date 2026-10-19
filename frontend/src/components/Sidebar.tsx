@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Hash, Plus, User as UserIcon, Users } from "lucide-react";
+import { BookOpen, Hash, Plus, Sparkles, User as UserIcon, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
@@ -94,6 +94,9 @@ export function Sidebar() {
             </div>
             <NavItem to="/admin/users" active={pathname === "/admin/users"} icon={<Users />}>
               Users
+            </NavItem>
+            <NavItem to="/admin/ai" active={pathname === "/admin/ai"} icon={<Sparkles />}>
+              AI providers
             </NavItem>
           </div>
         )}

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-export type PhotoChange = { kind: "keep" } | { kind: "replace"; file: File } | { kind: "remove" };
+export type PhotoChange = { kind: "keep" } | { kind: "replace"; file: File } | { kind: "url"; url: string } | { kind: "remove" };
 
 export function PhotoField({ current, value, onChange }: { current: string | null; value: PhotoChange; onChange: (c: PhotoChange) => void }) {
   const input = useRef<HTMLInputElement>(null);
@@ -19,7 +19,7 @@ export function PhotoField({ current, value, onChange }: { current: string | nul
     return () => URL.revokeObjectURL(url);
   }, [value]);
 
-  const shown = value.kind === "replace" ? preview : value.kind === "remove" ? null : current;
+  const shown = value.kind === "replace" ? preview : value.kind === "url" ? value.url : value.kind === "remove" ? null : current;
 
   return (
     <div className="flex items-center gap-4">
@@ -29,7 +29,7 @@ export function PhotoField({ current, value, onChange }: { current: string | nul
         className="bg-muted text-muted-foreground hover:border-primary/60 flex h-24 w-36 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed"
         aria-label="Choose photo"
       >
-        {shown ? <img src={shown} alt="" className="size-full object-cover" /> : <ImagePlus className="size-6" />}
+        {shown ? <img src={shown} alt="" referrerPolicy="no-referrer" className="size-full object-cover" /> : <ImagePlus className="size-6" />}
       </button>
       <div className="flex flex-col items-start gap-1.5">
         <Button type="button" variant="outline" size="sm" onClick={() => input.current?.click()}>
@@ -40,7 +40,9 @@ export function PhotoField({ current, value, onChange }: { current: string | nul
             <Trash2 /> Remove
           </Button>
         )}
-        <p className="text-muted-foreground text-xs">JPEG, PNG or WebP up to 20 MB.</p>
+        <p className="text-muted-foreground text-xs">
+          {value.kind === "url" ? "From the recipe page, saved with the recipe." : "JPEG, PNG or WebP up to 20 MB."}
+        </p>
       </div>
       <input
         ref={input}

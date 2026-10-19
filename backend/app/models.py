@@ -180,3 +180,19 @@ class Comment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     cook_log: Mapped[CookLog | None] = relationship()
+
+
+class LLMProvider(Base):
+    """An AI provider the admin configured for import and tidy up."""
+
+    __tablename__ = "llm_providers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), unique=True)
+    model: Mapped[str] = mapped_column(String(128))
+    api_key_encrypted: Mapped[str] = mapped_column(Text)
+    key_hint: Mapped[str] = mapped_column(String(8), default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

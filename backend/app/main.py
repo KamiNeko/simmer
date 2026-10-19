@@ -14,7 +14,7 @@ from .config import get_settings
 from .db import get_db, get_engine
 from .migrations import upgrade_database
 from .models import IngredientGroup, Recipe, Role, User
-from .routers import auth, journal, recipes, users
+from .routers import ai, auth, journal, recipes, users
 from .security import hash_password
 
 
@@ -54,6 +54,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(recipes.router)
 app.include_router(journal.router)
+app.include_router(ai.router)
 
 
 @app.get("/media/photos/{name}", include_in_schema=False)

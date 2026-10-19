@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Save, X } from "lucide-react";
+import { Loader2, Plus, RotateCcw, Save, Sparkles, TriangleAlert, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 
+import { type ImportState, ProviderSelect, providerParam } from "./ImportPage";
+
 function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
     <div className={className}>
@@ -26,14 +28,47 @@ function Field({ label, children, className }: { label: string; children: ReactN
 
 export function RecipeEditor() {
   const { slug } = useParams();
-  const { search } = useLocation();
+  const { search, state } = useLocation();
+  const imported = (state as { imported?: ImportState } | null)?.imported;
   const navigate = useNavigate();
   const client = useQueryClient();
   const existing = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!), enabled: !!slug });
   const tags = useQuery({ queryKey: ["tags"], queryFn: api.tags });
-  const [draft, setDraft] = useState<RecipeDraft | null>(slug ? null : draftFromRecipe());
+  const providers = useQuery({ queryKey: ["ai-providers"], queryFn: api.aiProviders });
+  const [draft, setDraft] = useState<RecipeDraft | null>(slug ? null : draftFromRecipe(imported?.result.recipe));
   const [errors, setErrors] = useState<string[]>([]);
-  const [photo, setPhoto] = useState<PhotoChange>({ kind: "keep" });
+  const [photo, setPhoto] = useState<PhotoChange>(
+    imported?.result.image_url ? { kind: "url", url: imported.result.image_url } : { kind: "keep" },
+  );
+  const [importInfo, setImportInfo] = useState(imported);
+  const [showSource, setShowSource] = useState(!!imported);
+  const [retryProvider, setRetryProvider] = useState("default");
+  const hasAI = (providers.data?.length ?? 0) > 0;
+
+  /** Replace the draft with an AI result, keeping the old one a click away. */
+  const replaceDraft = (next: RecipeDraft, message: string) => {
+    const previous = draft;
+    setDraft(next);
+    setShowSource(true);
+    toast.success(message, previous ? { action: { label: "Undo", onClick: () => setDraft(previous) } } : undefined);
+  };
+
+  const tidy = useMutation({
+    mutationFn: (input: NonNullable<ReturnType<typeof toInput>["input"]>) => api.tidy(input),
+    onSuccess: (recipe) => replaceDraft(draftFromRecipe(recipe), "Tidied up. Check the result before saving."),
+    onError: (e) => toast.error(e.message),
+  });
+  const reimport = useMutation({
+    mutationFn: (provider: string) => {
+      const request = { ...importInfo!.request, provider: providerParam(provider) };
+      return api.importRecipe(request).then((result) => ({ request, result }));
+    },
+    onSuccess: (next: ImportState) => {
+      setImportInfo(next);
+      replaceDraft(draftFromRecipe(next.result.recipe), "Imported again");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   useEffect(() => {
     if (existing.data && !draft) setDraft(draftFromRecipe(existing.data));
@@ -44,6 +79,7 @@ export function RecipeEditor() {
       let recipe = slug ? await api.updateRecipe(slug, input) : await api.createRecipe(input);
       try {
         if (photo.kind === "replace") recipe = await api.uploadPhoto(recipe.slug, photo.file);
+        if (photo.kind === "url") recipe = await api.photoFromUrl(recipe.slug, photo.url);
         if (photo.kind === "remove" && recipe.photo_url) recipe = await api.deletePhoto(recipe.slug);
       } catch (e) {
         toast.error(`Recipe saved, but the photo failed: ${(e as Error).message}`);
@@ -75,6 +111,12 @@ export function RecipeEditor() {
     if (input) save.mutate(input);
   };
 
+  const runTidy = () => {
+    const { input, errors } = toInput(draft);
+    setErrors(errors);
+    if (input) tidy.mutate(input);
+  };
+
   const moveGroup = (index: number, direction: -1 | 1) => {
     const groups = [...draft.groups];
     [groups[index], groups[index + direction]] = [groups[index + direction], groups[index]];
@@ -84,8 +126,20 @@ export function RecipeEditor() {
   return (
     <form onSubmit={submit}>
       <div className="bg-panel/95 sticky top-0 z-20 flex h-14 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
-        <h1 className="font-semibold">{slug ? "Edit recipe" : "New recipe"}</h1>
+        <h1 className="font-semibold">{slug ? "Edit recipe" : importInfo ? "Review import" : "New recipe"}</h1>
         <div className="ml-auto flex gap-2">
+          {hasAI && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={runTidy}
+              disabled={tidy.isPending}
+              title="Split ingredient lines into fields, suggest groups and add densities"
+            >
+              {tidy.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />} Tidy up
+            </Button>
+          )}
           <Button variant="ghost" size="sm" asChild>
             <Link to={cancelTo}>
               <X /> Cancel
@@ -98,6 +152,22 @@ export function RecipeEditor() {
       </div>
 
       <div className="mx-auto max-w-4xl space-y-8 px-5 py-8 md:px-10">
+        {importInfo && <ImportBanner info={importInfo} />}
+        {importInfo && hasAI && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Doesn't look right? Import again with</span>
+            <ProviderSelect
+              providers={providers.data!}
+              value={retryProvider}
+              onChange={setRetryProvider}
+              allowNone={!!importInfo.request.url}
+              className="h-8 w-60"
+            />
+            <Button type="button" variant="outline" size="sm" onClick={() => reimport.mutate(retryProvider)} disabled={reimport.isPending}>
+              {reimport.isPending ? <Loader2 className="animate-spin" /> : <RotateCcw />} Import again
+            </Button>
+          </div>
+        )}
         {errors.length > 0 && (
           <ul className="border-destructive/40 bg-destructive/10 text-destructive space-y-1 rounded-lg border p-3 text-sm">
             {errors.map((e) => (
@@ -151,6 +221,7 @@ export function RecipeEditor() {
               group={group}
               isFirst={i === 0}
               isLast={i === draft.groups.length - 1}
+              showSource={showSource}
               onMove={(d) => moveGroup(i, d)}
               onChange={(g) => set("groups", draft.groups.map((x) => (x.key === g.key ? g : x)))}
               onRemove={() => set("groups", draft.groups.filter((x) => x.key !== group.key))}
@@ -210,5 +281,30 @@ export function RecipeEditor() {
         </section>
       </div>
     </form>
+  );
+}
+
+function ImportBanner({ info }: { info: ImportState }) {
+  const { result, request } = info;
+  let site = "the pasted text";
+  if (request.url) {
+    try {
+      site = new URL(request.url).hostname.replace(/^www\./, "");
+    } catch {
+      site = request.url;
+    }
+  }
+  const how = result.provider ? `with ${result.model}` : "from the page's recipe data";
+  return (
+    <div className="space-y-2">
+      <p className="border-primary/30 bg-primary/10 rounded-lg border p-3 text-sm">
+        Imported from <span className="font-medium">{site}</span> {how}. Compare the ingredients with their source lines, then save.
+      </p>
+      {result.warning && (
+        <p className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" /> {result.warning}
+        </p>
+      )}
+    </div>
   );
 }

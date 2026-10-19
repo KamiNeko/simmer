@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SIMMER_", env_file=".env", extra="ignore")
 
     data_dir: Path = Path("./data")
-    secret_key: str = "change-me"
+    # Encrypts the AI provider API keys. Generated into the data directory when unset.
+    secret_key: str | None = None
     admin_username: str | None = None
     admin_password: str | None = None
     base_url: str = "http://localhost:8080"

@@ -1,4 +1,4 @@
-import type { Ingredient, Recipe, RecipeInput } from "@/lib/api";
+import type { Ingredient, RecipeInput } from "@/lib/api";
 import { formatQuantity, parseQuantity } from "@/lib/quantity";
 
 let counter = 0;
@@ -59,7 +59,7 @@ export const rowFromIngredient = (i: Ingredient): IngredientRow => ({
   grams_per_ml: i.grams_per_ml,
 });
 
-export function draftFromRecipe(recipe?: Recipe): RecipeDraft {
+export function draftFromRecipe(recipe?: RecipeInput): RecipeDraft {
   if (!recipe)
     return {
       title: "",
