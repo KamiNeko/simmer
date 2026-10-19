@@ -40,7 +40,8 @@ export interface Amount {
   unit: string | null;
 }
 
-const roundTo = (value: number, increment: number) => Math.max(increment, Math.round(value / increment) * increment);
+/** Round to the increment; a small amount above zero shows as one increment rather than 0. */
+const roundTo = (value: number, increment: number) => (value > 0 ? Math.max(increment, Math.round(value / increment) * increment) : 0);
 
 function grams(value: number): [number, string] {
   if (value >= 1000) return [roundTo(value / 1000, 0.05), "kg"];

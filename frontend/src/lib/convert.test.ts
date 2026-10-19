@@ -60,6 +60,20 @@ describe("us", () => {
   ])("%j -> %s", (i, expected) => expect(show(i, "us")).toBe(expected));
 });
 
+describe("zero amounts", () => {
+  it.each([
+    [ing(0, "oz"), "metric", "0 g"],
+    [ing(0, "cup"), "metric", "0 ml"],
+    [ing(0, "g"), "us", "0 oz"],
+    [ing(0, "ml"), "us", "0 tsp"],
+    [ing(0, "g", null, 100), "metric", "0–100 g"],
+  ] as const)("%j in %s -> %s", (i, system, expected) => expect(show(i, system)).toBe(expected));
+
+  it("still shows a tiny amount as the smallest step", () => {
+    expect(show(ing(0.1, "g"), "metric")).toBe("0.5 g");
+  });
+});
+
 describe("original", () => {
   it("only scales", () => {
     expect(show(ing(2, "cup", 0.85), "original", 1.5)).toBe("3 cups");
