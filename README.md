@@ -1,6 +1,6 @@
 # Simmer
 
-A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link, pasted text or photos of cookbook pages, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, a cooking view keeps the screen on, and a shopping list adds up the ingredients of several recipes.
+A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link, pasted text or photos of cookbook pages, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, a cooking view keeps the screen on, a weekly meal plan is shared by the household, and a shopping list adds up the ingredients of several recipes.
 
 All four milestones of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done.
 
@@ -56,6 +56,10 @@ Amounts are stored as written and only converted for display, so switching never
 - Oven temperatures and sizes in the steps convert too (425°F to 220 °C, 9x13-inch to 23 × 33 cm).
 
 **Cook** opens a full-screen view with large text, ingredient checkboxes and one highlighted step at a time (arrow keys or the Back and Next buttons). The screen stays on while it is open, in browsers that support it.
+
+## Meal plan
+
+**Meal plan** in the sidebar shows a week from Monday to Sunday. Add a recipe or a note such as "Leftovers" to any day, change servings, move entries to another day, or open a recipe straight in the cooking view. A recipe's **Plan** button adds it to one of the next 14 days. Everyone who is signed in shares the same plan; visitors don't see it. **Add week to shopping list** puts the week's recipes on your own shopping list, adding up servings when a recipe is planned twice. A recipe already on the list keeps the larger amount, so pressing it again changes nothing.
 
 ## Shopping list
 

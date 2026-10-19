@@ -47,10 +47,10 @@ export function useRecipeView(recipe: Recipe | undefined, initial?: { servings?:
 
 export type RecipeViewState = ReturnType<typeof useRecipeView>;
 
-const UNIT_OPTIONS: { value: UnitSystem; label: string; title: string }[] = [
+const UNIT_OPTIONS: { value: UnitSystem; label: string; short?: string; title: string }[] = [
   { value: "metric", label: "Metric", title: "Grams, millilitres and °C" },
   { value: "us", label: "US", title: "Cups, ounces and °F" },
-  { value: "original", label: "Original", title: "As written in the recipe" },
+  { value: "original", label: "Original", short: "Orig.", title: "As written in the recipe" },
 ];
 
 /** Whole servings, with halves below two. */
@@ -74,8 +74,9 @@ export function ViewControls({ view, large = false }: { view: RecipeViewState; l
         >
           <Minus className="size-3.5" />
         </button>
-        <span className="min-w-16 text-center text-sm whitespace-nowrap tabular-nums" aria-live="polite">
-          <span className="font-semibold">{formatNumber(view.servings)}</span> {label}
+        <span className="min-w-12 text-center text-sm whitespace-nowrap tabular-nums sm:min-w-16" aria-live="polite">
+          <span className="font-semibold">{formatNumber(view.servings)}</span> {view.hasServings ? <span className="max-sm:hidden">{label}</span> : label}
+          {view.hasServings && <span className="sm:hidden">serv.</span>}
         </span>
         <button
           type="button"
@@ -100,7 +101,14 @@ export function ViewControls({ view, large = false }: { view: RecipeViewState; l
               view.units === o.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {o.label}
+            {o.short ? (
+              <>
+                <span className="sm:hidden">{o.short}</span>
+                <span className="hidden sm:inline">{o.label}</span>
+              </>
+            ) : (
+              o.label
+            )}
           </button>
         ))}
       </div>
