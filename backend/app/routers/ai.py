@@ -1,18 +1,22 @@
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
-from .. import crypto, importer
+from .. import crypto, importer, photos
 from ..deps import DB, AdminUser, CurrentUser
 from ..llm import KINDS, LLMError, Provider, build_provider
-from ..llm.base import ProviderConfig
-from ..llm.recipes import check_connection, import_recipe, tidy_recipe
+from ..llm.base import Image, ProviderConfig
+from ..llm.recipes import check_connection, import_photos, import_recipe, tidy_recipe
 from ..models import LLMProvider
 from ..schemas import ImportIn, ImportOut, ProviderOut, ProviderUpdate, RecipeIn, TidyIn
 
 router = APIRouter(prefix="/api", tags=["ai"])
 
 NO_AI = "none"
+MAX_PHOTOS = 6
 
 
 def _configured(db: Session) -> dict[str, LLMProvider]:
@@ -185,6 +189,38 @@ def import_recipe_draft(data: ImportIn, _: CurrentUser, db: DB) -> ImportOut:
     except LLMError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     return ImportOut(recipe=recipe, provider=provider.kind, model=provider.model)
+
+
+@router.post("/import/photos", response_model=ImportOut)
+async def import_photo_draft(
+    files: list[UploadFile],
+    _: CurrentUser,
+    db: DB,
+    provider: Annotated[str | None, Form()] = None,
+) -> ImportOut:
+    """Read a recipe from photos, such as cookbook pages, into a draft for review."""
+    if not files:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Add at least one photo")
+    if len(files) > MAX_PHOTOS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Add at most {MAX_PHOTOS} photos")
+    chosen = resolve_provider(db, provider or None)
+    if chosen is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Importing photos needs an AI provider. An admin can add one in Settings.",
+        )
+    images = []
+    for file in files:
+        try:
+            data = photos.prepare_for_ai(await file.read(photos.MAX_UPLOAD_BYTES + 1))
+        except photos.InvalidImage as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+        images.append(Image(data=data, media_type="image/jpeg"))
+    try:
+        recipe = await run_in_threadpool(import_photos, chosen, images)
+    except LLMError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+    return ImportOut(recipe=recipe, provider=chosen.kind, model=chosen.model)
 
 
 @router.post("/ai/tidy", response_model=RecipeIn)

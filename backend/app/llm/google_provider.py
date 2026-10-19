@@ -1,9 +1,10 @@
+from collections.abc import Sequence
 from typing import Any
 
 from google import genai
 from google.genai import errors, types
 
-from .base import MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, LLMError
+from .base import MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, Image, LLMError
 
 
 class GoogleProvider:
@@ -16,11 +17,17 @@ class GoogleProvider:
             http_options=types.HttpOptions(timeout=TIMEOUT_SECONDS * 1000),
         )
 
-    def generate_json(self, system: str, prompt: str, schema: dict[str, Any]) -> str:
+    def generate_json(
+        self, system: str, prompt: str, schema: dict[str, Any], images: Sequence[Image] = ()
+    ) -> str:
+        contents: list[Any] = [
+            types.Part.from_bytes(data=image.data, mime_type=image.media_type) for image in images
+        ]
+        contents.append(prompt)
         try:
             response = self._client.models.generate_content(
                 model=self.model,
-                contents=prompt,
+                contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system,
                     max_output_tokens=MAX_OUTPUT_TOKENS,

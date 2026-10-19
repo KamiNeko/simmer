@@ -1,8 +1,10 @@
+import base64
+from collections.abc import Sequence
 from typing import Any
 
 import anthropic
 
-from .base import MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, LLMError
+from .base import MAX_OUTPUT_TOKENS, TIMEOUT_SECONDS, Image, LLMError
 
 
 class AnthropicProvider:
@@ -12,14 +14,28 @@ class AnthropicProvider:
         self.model = model
         self._client = anthropic.Anthropic(api_key=api_key, timeout=TIMEOUT_SECONDS)
 
-    def generate_json(self, system: str, prompt: str, schema: dict[str, Any]) -> str:
+    def generate_json(
+        self, system: str, prompt: str, schema: dict[str, Any], images: Sequence[Image] = ()
+    ) -> str:
+        content: list[dict[str, Any]] = [
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image.media_type,
+                    "data": base64.b64encode(image.data).decode(),
+                },
+            }
+            for image in images
+        ]
+        content.append({"type": "text", "text": prompt})
         try:
             # Streaming avoids request timeouts on long recipes.
             with self._client.messages.stream(
                 model=self.model,
                 max_tokens=MAX_OUTPUT_TOKENS,
                 system=system,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": content}],
                 output_config={"format": {"type": "json_schema", "schema": schema}},
             ) as stream:
                 message = stream.get_final_message()

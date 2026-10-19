@@ -122,6 +122,7 @@ export interface AIProvider {
 export interface ImportRequest {
   url?: string;
   text?: string;
+  photos?: File[];
   /** A provider kind, "none" to skip AI, or undefined for the default. */
   provider?: string;
 }
@@ -222,7 +223,13 @@ export const api = {
     request<AIProvider>("PUT", `/api/admin/ai/providers/${kind}`, data),
   deleteProvider: (kind: ProviderKind) => request<void>("DELETE", `/api/admin/ai/providers/${kind}`),
   testProvider: (kind: ProviderKind) => request<{ status: string }>("POST", `/api/admin/ai/providers/${kind}/test`),
-  importRecipe: (data: ImportRequest) => request<ImportResult>("POST", "/api/import", data),
+  importRecipe: ({ photos, ...data }: ImportRequest) => {
+    if (!photos?.length) return request<ImportResult>("POST", "/api/import", data);
+    const form = new FormData();
+    for (const photo of photos) form.append("files", photo);
+    if (data.provider) form.append("provider", data.provider);
+    return request<ImportResult>("POST", "/api/import/photos", form);
+  },
   tidy: (recipe: RecipeInput, provider?: string) => request<RecipeInput>("POST", "/api/ai/tidy", { recipe, provider }),
 
   tags: () => request<Tag[]>("GET", "/api/tags"),

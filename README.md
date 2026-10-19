@@ -1,6 +1,6 @@
 # Simmer
 
-A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link or pasted text, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, and a cooking view keeps the screen on.
+A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link, pasted text or photos of cookbook pages, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, and a cooking view keeps the screen on.
 
 All four milestones of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done.
 
@@ -59,11 +59,11 @@ Amounts are stored as written and only converted for display, so switching never
 
 ## Importing recipes
 
-Use the import button next to **New** and paste a link or the recipe text. Simmer reads the recipe data most recipe sites embed (including ingredient headings from WP Recipe Maker and Tasty Recipes), hands it to the AI, and opens the result in the editor with each ingredient's source line beside it. Nothing is saved until you press Save; the page's photo is downloaded then.
+Use the import button next to **New** and paste a link or the recipe text, or add photos of cookbook pages or a handwritten card (up to 6, in page order). Simmer reads the recipe data most recipe sites embed (including ingredient headings from WP Recipe Maker and Tasty Recipes), hands it to the AI, and opens the result in the editor with each ingredient's source line beside it. Nothing is saved until you press Save; the page's photo is downloaded then.
 
 The admin adds API keys under **AI providers** (Anthropic, OpenAI, Google Gemini), picks the model and the default, and can test the connection. Keys are stored encrypted and never sent back to the browser. The import screen can switch provider, and the review screen can re-import with another one when a result looks wrong.
 
-Without any provider, links still import from the page's recipe data, without grouping fixes or densities. Pasted text and **Tidy up** (which splits typed ingredient lines into fields and suggests groups) need a provider.
+Without any provider, links still import from the page's recipe data, without grouping fixes or densities. Pasted text, photos and **Tidy up** (which splits typed ingredient lines into fields and suggests groups) need a provider.
 
 Imports only fetch public addresses, so the import can't be used to reach services on your home network.
 

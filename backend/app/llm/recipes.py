@@ -1,13 +1,14 @@
 """Turn page data or pasted text into a structured recipe draft with an LLM."""
 
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from ..schemas import RecipeIn
 from ..units import UNIT_ALIASES
-from .base import LLMError, Provider
+from .base import Image, LLMError, Provider
 
 
 def _nullable(kind: str) -> dict[str, Any]:
@@ -137,9 +138,11 @@ def _clean(data: dict[str, Any]) -> None:
         data["servings"] = None
 
 
-def generate_recipe(provider: Provider, system: str, prompt: str) -> RecipeIn:
+def generate_recipe(
+    provider: Provider, system: str, prompt: str, images: Sequence[Image] = ()
+) -> RecipeIn:
     """Ask for a recipe and validate it, retrying once with the validation error."""
-    raw = provider.generate_json(system, prompt, RECIPE_SCHEMA)
+    raw = provider.generate_json(system, prompt, RECIPE_SCHEMA, images)
     try:
         return _validate(raw)
     except (ValueError, ValidationError) as first_error:
@@ -147,7 +150,7 @@ def generate_recipe(provider: Provider, system: str, prompt: str) -> RecipeIn:
             f"{prompt}\n\nYour previous answer was not valid:\n{first_error}\n\n"
             f"Previous answer:\n{raw}\n\nReturn the corrected recipe JSON."
         )
-        raw = provider.generate_json(system, retry_prompt, RECIPE_SCHEMA)
+        raw = provider.generate_json(system, retry_prompt, RECIPE_SCHEMA, images)
         try:
             return _validate(raw)
         except (ValueError, ValidationError) as exc:
@@ -156,6 +159,18 @@ def generate_recipe(provider: Provider, system: str, prompt: str) -> RecipeIn:
 
 def import_recipe(provider: Provider, source: str) -> RecipeIn:
     return generate_recipe(provider, IMPORT_SYSTEM, f"<recipe>\n{source}\n</recipe>")
+
+
+PHOTO_PROMPT = (
+    "The images are photos of a recipe, for example cookbook pages, in order. Read the "
+    "recipe from them and return it in the JSON format. If a page shows several recipes, "
+    "take the one that fills most of the page. original_text is each ingredient line as "
+    "printed."
+)
+
+
+def import_photos(provider: Provider, images: Sequence[Image]) -> RecipeIn:
+    return generate_recipe(provider, IMPORT_SYSTEM, PHOTO_PROMPT, images)
 
 
 def tidy_recipe(provider: Provider, recipe: RecipeIn) -> RecipeIn:

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FileText, Link2, Loader2, Sparkles } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { Camera, FileText, ImagePlus, Link2, Loader2, Sparkles, X } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,58 @@ export interface ImportState {
 }
 
 const DEFAULT = "default";
+const MAX_PHOTOS = 6;
+
+type Mode = "url" | "text" | "photo";
+
+function PhotoPicker({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      {previews.map((src, i) => (
+        <div key={src} className="relative h-28 w-24 overflow-hidden rounded-lg border">
+          <img src={src} alt={`Page ${i + 1}`} className="size-full object-cover" />
+          <span className="bg-background/80 absolute bottom-1 left-1 rounded px-1.5 font-mono text-[10px]">{i + 1}</span>
+          <button
+            type="button"
+            onClick={() => onChange(files.filter((_, j) => j !== i))}
+            className="bg-background/80 hover:bg-background absolute top-1 right-1 rounded-full p-0.5"
+            aria-label={`Remove photo ${i + 1}`}
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ))}
+      {files.length < MAX_PHOTOS && (
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          className="bg-muted text-muted-foreground hover:border-primary/60 hover:text-foreground flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs"
+        >
+          <ImagePlus className="size-5" /> Add photo
+        </button>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          onChange([...files, ...Array.from(e.target.files ?? [])].slice(0, MAX_PHOTOS));
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
 
 export function ProviderSelect({
   providers,
@@ -60,13 +112,15 @@ export function ImportPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const providers = useQuery({ queryKey: ["ai-providers"], queryFn: api.aiProviders });
-  const [mode, setMode] = useState<"url" | "text">("url");
+  const [mode, setMode] = useState<Mode>("url");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [provider, setProvider] = useState(DEFAULT);
 
   const hasAI = (providers.data?.length ?? 0) > 0;
-  const choice = hasAI ? provider : "none";
+  // Text and photos always need the AI, so "without AI" falls back to the default there.
+  const choice = !hasAI ? "none" : mode !== "url" && provider === "none" ? DEFAULT : provider;
 
   const run = useMutation({
     mutationFn: (request: ImportRequest) => api.importRecipe(request).then((result) => ({ request, result })),
@@ -75,12 +129,12 @@ export function ImportPage() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const request: ImportRequest =
-      mode === "url" ? { url: url.trim(), provider: providerParam(choice) } : { text, provider: providerParam(choice) };
+    const source = mode === "url" ? { url: url.trim() } : mode === "text" ? { text } : { photos };
+    const request: ImportRequest = { ...source, provider: providerParam(choice) };
     run.mutate(request);
   };
 
-  const tab = (value: "url" | "text", icon: React.ReactNode, label: string) => (
+  const tab = (value: Mode, icon: React.ReactNode, label: string) => (
     <button
       type="button"
       onClick={() => setMode(value)}
@@ -103,9 +157,20 @@ export function ImportPage() {
           <div className="bg-muted inline-flex gap-1 rounded-lg p-1">
             {tab("url", <Link2 />, "From a link")}
             {tab("text", <FileText />, "From text")}
+            {tab("photo", <Camera />, "From photos")}
           </div>
 
-          {mode === "url" ? (
+          {mode === "photo" ? (
+            <div className="space-y-2">
+              <Label>Photos of the recipe</Label>
+              <PhotoPicker files={photos} onChange={setPhotos} />
+              <p className="text-muted-foreground text-xs">
+                {hasAI || !providers.isSuccess
+                  ? `Cookbook pages or a handwritten card, up to ${MAX_PHOTOS} photos in page order.`
+                  : "Importing photos needs an AI provider. An admin can add one in AI providers."}
+              </p>
+            </div>
+          ) : mode === "url" ? (
             <div className="space-y-2">
               <Label htmlFor="import-url">Recipe link</Label>
               <Input
@@ -140,7 +205,7 @@ export function ImportPage() {
             {hasAI ? (
               <div className="space-y-2">
                 <Label>AI provider</Label>
-                <ProviderSelect providers={providers.data!} value={provider} onChange={setProvider} allowNone={mode === "url"} className="w-64" />
+                <ProviderSelect providers={providers.data!} value={choice} onChange={setProvider} allowNone={mode === "url"} className="w-64" />
               </div>
             ) : (
               providers.isSuccess && (
@@ -150,7 +215,7 @@ export function ImportPage() {
                 </p>
               )
             )}
-            <Button type="submit" className="ml-auto" disabled={run.isPending || (mode === "text" && !hasAI)}>
+            <Button type="submit" className="ml-auto" disabled={run.isPending || (mode !== "url" && !hasAI) || (mode === "photo" && !photos.length)}>
               {run.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
               {run.isPending ? "Reading the recipe…" : "Import"}
             </Button>

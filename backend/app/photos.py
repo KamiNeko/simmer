@@ -59,3 +59,23 @@ def delete_photo(name: str | None) -> None:
     folder = photos_dir()
     for suffix in (".webp", "-thumb.webp"):
         (folder / f"{name}{suffix}").unlink(missing_ok=True)
+
+
+AI_IMAGE_SIZE = 2000
+
+
+def prepare_for_ai(data: bytes) -> bytes:
+    """A JPEG of a recipe photo small enough for the AI providers, readable text kept."""
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise InvalidImage("A photo is larger than 20 MB")
+    try:
+        image = Image.open(io.BytesIO(data))
+        image = ImageOps.exif_transpose(image)
+        image.load()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise InvalidImage("A file is not an image Simmer can read") from exc
+    image = image.convert("RGB")
+    image.thumbnail((AI_IMAGE_SIZE, AI_IMAGE_SIZE))
+    buffer = io.BytesIO()
+    image.save(buffer, "JPEG", quality=85)
+    return buffer.getvalue()
