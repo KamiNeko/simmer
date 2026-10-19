@@ -120,3 +120,23 @@ def test_recipe_with_a_stored_blank_step_still_loads(admin):
         session.execute(update(Step).values(text=""))
         session.commit()
     assert admin.get(f"/api/recipes/{slug}").status_code == 200
+
+
+def test_typed_units_are_stored_as_unit_codes(admin):
+    recipe = copy.deepcopy(SAMPLE_RECIPE)
+    recipe["groups"] = [
+        {
+            "ingredients": [
+                {"quantity": 2, "unit": "cups", "name": "rice"},
+                {"quantity": 1, "unit": "Tbsp", "name": "oil"},
+                {"quantity": 1, "unit": "T", "name": "sugar"},
+                {"quantity": 200, "unit": "grams", "name": "flour"},
+                {"quantity": 3, "unit": "cloves", "name": "garlic"},
+                {"quantity": 1, "unit": "Fl Oz", "name": "milk"},
+                {"quantity": 1, "unit": "sprig", "name": "thyme"},
+            ]
+        }
+    ]
+    created = admin.post("/api/recipes", json=recipe).json()
+    units = [i["unit"] for i in created["groups"][0]["ingredients"]]
+    assert units == ["cup", "tbsp", "tbsp", "g", "clove", "fl_oz", "sprig"]
