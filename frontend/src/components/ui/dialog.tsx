@@ -30,7 +30,8 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("flex flex-col gap-2 text-center sm:text-left", className)} {...props} />;
+  // Padded clear of the close button, so a long title wraps before running under it.
+  return <div className={cn("flex flex-col gap-2 px-6 text-center sm:pl-0 sm:text-left", className)} {...props} />;
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -38,7 +39,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("text-lg leading-none font-semibold", className)} {...props} />;
+  return <DialogPrimitive.Title className={cn("text-lg leading-snug font-semibold", className)} {...props} />;
 }
 
 function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
