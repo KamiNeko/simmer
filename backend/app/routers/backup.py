@@ -30,6 +30,11 @@ FORMAT = "simmer-recipes"
 VERSION = 1
 MAX_IMPORT_BYTES = 500 * 1024 * 1024
 MAX_JSON_BYTES = 50 * 1024 * 1024
+MAX_IMPORT_RECIPES = 5000
+# Exported photos are already scaled to FULL_SIZE, so anything much bigger didn't come from
+# Simmer; capping it keeps a small zip from costing minutes of decoding per recipe.
+MAX_IMPORT_PIXELS = 2 * photos.FULL_SIZE * photos.FULL_SIZE
+COMMIT_EVERY = 50
 
 
 def _zip_response(build, prefix: str) -> FileResponse:
@@ -128,7 +133,7 @@ def _read_export(data: bytes) -> tuple[dict, zipfile.ZipFile | None]:
         raw, source = data, None
     try:
         document = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "The file is not a Simmer export"
         ) from exc
@@ -159,9 +164,19 @@ def _photo_bytes(archive: zipfile.ZipFile | None, name: object) -> bytes | None:
         return None
 
 
+def _created_at(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        created = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return created if created.tzinfo else created.replace(tzinfo=UTC)
+
+
 @router.post("/import/file", response_model=ImportFileResult)
 def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult:
-    """Import recipes from a Simmer export. Recipes whose title already exists are skipped."""
+    """Import recipes from a Simmer export. Recipes whose title is already here are skipped."""
     data = file.file.read(MAX_IMPORT_BYTES + 1)
     if len(data) > MAX_IMPORT_BYTES:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "The file is larger than 500 MB")
@@ -169,8 +184,15 @@ def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult
     entries = document.get("recipes")
     if not isinstance(entries, list):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The export has no recipes")
+    if len(entries) > MAX_IMPORT_RECIPES:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"The export has more than {MAX_IMPORT_RECIPES} recipes; split it into smaller files",
+        )
 
+    # Only titles already here are skipped: one export can hold two recipes of the same name.
     existing = {t.lower() for t in db.scalars(select(func.lower(Recipe.title)))}
+    used_photos: set[str] = set()
     result = ImportFileResult()
     for index, entry in enumerate(entries, 1):
         title = entry.get("title") if isinstance(entry, dict) else None
@@ -186,17 +208,25 @@ def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult
             result.skipped.append(recipe_in.title)
             continue
         recipe = Recipe(slug=unique_slug(db, recipe_in.title), author_id=user.id)
+        created = _created_at(entry.get("created_at"))
+        if created:
+            recipe.created_at = created
         apply_recipe(db, recipe, recipe_in)
         db.add(recipe)
         db.flush()
-        photo = _photo_bytes(archive, entry.get("photo"))
+        name = entry.get("photo")
+        # Each photo in the zip is used once: exports never share one between recipes.
+        photo = None if name in used_photos else _photo_bytes(archive, name)
         if photo:
+            used_photos.add(name)
             # A damaged photo shouldn't stop the recipe itself from coming in.
             with contextlib.suppress(photos.InvalidImage):
-                recipe.photo = photos.save_photo(photo, recipe.id)
+                recipe.photo = photos.save_photo(photo, recipe.id, MAX_IMPORT_PIXELS)
         search.index_recipe(db, recipe)
-        existing.add(recipe_in.title.strip().lower())
         result.imported.append(ImportedRecipe(slug=recipe.slug, title=recipe.title))
+        if len(result.imported) % COMMIT_EVERY == 0:
+            # Let other saves in between on big imports instead of holding the write lock.
+            db.commit()
     db.commit()
     return result
 

@@ -33,11 +33,11 @@ def photo_urls(name: str | None) -> tuple[str | None, str | None]:
     return f"/media/photos/{name}.webp", f"/media/photos/{name}-thumb.webp"
 
 
-def _open(data: bytes, size: int, unreadable: str) -> Image.Image:
+def _open(data: bytes, size: int, unreadable: str, max_pixels: int = MAX_PIXELS) -> Image.Image:
     """Decode an upload safely: refuse oversized canvases before decoding any pixels."""
     try:
         image = Image.open(io.BytesIO(data))
-        if image.width * image.height > MAX_PIXELS:
+        if image.width * image.height > max_pixels:
             raise InvalidImage("The image has too many pixels")
         # JPEGs can decode at a fraction of their size, which saves memory for big photos.
         image.draft("RGB", (size, size))
@@ -48,11 +48,11 @@ def _open(data: bytes, size: int, unreadable: str) -> Image.Image:
     return image
 
 
-def save_photo(data: bytes, recipe_id: int) -> str:
+def save_photo(data: bytes, recipe_id: int, max_pixels: int = MAX_PIXELS) -> str:
     """Write the full-size and thumbnail versions and return the base name."""
     if len(data) > MAX_UPLOAD_BYTES:
         raise InvalidImage("The photo is larger than 20 MB")
-    image = _open(data, FULL_SIZE, "The file is not an image Simmer can read")
+    image = _open(data, FULL_SIZE, "The file is not an image Simmer can read", max_pixels)
     if image.mode not in ("RGB", "RGBA"):
         image = image.convert("RGB")
 

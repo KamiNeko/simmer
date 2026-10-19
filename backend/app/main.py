@@ -1,4 +1,5 @@
 import html
+import os
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -29,7 +30,7 @@ def bootstrap_admin(db: Session) -> None:
     db.add(
         User(
             username=settings.admin_username,
-            display_name=settings.admin_username,
+            display_name="Admin",
             password_hash=hash_password(settings.admin_password),
             role=Role.admin,
         )
@@ -40,6 +41,8 @@ def bootstrap_admin(db: Session) -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Run migrations and create the admin from the environment on start."""
+    # New database, photo and key files are readable by Simmer's user only.
+    os.umask(0o077)
     upgrade_database(get_engine())
     db = next(get_db())
     try:

@@ -38,9 +38,9 @@ The compose file publishes port 8080 on every interface. When your reverse proxy
 
 Then run `docker compose up -d` again.
 
-`FORWARDED_ALLOW_IPS` tells Uvicorn which addresses may set `X-Forwarded-For` and `X-Forwarded-Proto`. The image sets it to `*`. That is fine when the port is bound to localhost, because only the proxy can connect. Simmer uses the forwarded address for the login throttle, so it matters that it is right.
+`FORWARDED_ALLOW_IPS` tells Uvicorn which addresses may set `X-Forwarded-For` and `X-Forwarded-Proto`. The image trusts private network addresses (`127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7`), which covers a proxy on the same host (it reaches the container through Docker's bridge network) or elsewhere on your LAN. Simmer uses the forwarded address for the login throttle, so it matters that it is right. Don't set it to `*` if port 8080 can be reached from the internet: anyone could then claim to be any address.
 
-If the proxy runs on another machine (for example Nginx Proxy Manager in its own LXC), you can't bind to localhost. Bind to the LAN address instead and set `FORWARDED_ALLOW_IPS` in `.env` to the proxy's IP. Otherwise anyone who can reach port 8080 directly can claim to be any address.
+If the proxy runs on another machine (for example Nginx Proxy Manager in its own LXC), you can't bind to localhost. Bind to the LAN address instead. The default `FORWARDED_ALLOW_IPS` already trusts LAN addresses; set it in `.env` to just the proxy's IP to be stricter, so other machines on your network can't claim to be any address.
 
 ## Reverse proxy
 
@@ -149,7 +149,7 @@ An HTML 413 page comes from the proxy: raise its body limit as shown above. A JS
 
 ### Login says "Too many failed attempts"
 
-After 10 failed logins for one username, or 30 from one address, within 15 minutes, Simmer asks people to wait. The counts are kept in memory, so `docker compose restart simmer` clears them.
+After 10 failed logins for one username from one address, or 30 from one address, within 15 minutes, Simmer asks people to wait. The counts are kept in memory, so `docker compose restart simmer` clears them.
 
 If everyone gets locked out at once, Simmer probably sees the proxy's address for every visitor. Check that the proxy sends `X-Forwarded-For` and that `FORWARDED_ALLOW_IPS` includes the proxy (see above).
 

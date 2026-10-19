@@ -67,13 +67,15 @@ def setup(data: SetupIn, db: DB, response: Response) -> User:
 
 
 class LoginThrottle:
-    """Slows down password guessing: a few failures per account and per address, then a pause.
+    """Slows down password guessing: a few failures per account and address, then a pause.
 
-    Kept in memory, which is enough for Simmer's single process; a restart clears it.
+    Account failures count per address, so guessing someone's password from one place
+    doesn't lock them out everywhere else. Kept in memory, which is enough for Simmer's
+    single process; a restart clears it.
     """
 
     WINDOW = 15 * 60
-    PER_USERNAME = 10
+    PER_ACCOUNT = 10
     PER_ADDRESS = 30
     SWEEP_AT = 1000
 
@@ -93,7 +95,7 @@ class LoginThrottle:
         now = time.monotonic()
         waits = []
         for key, limit in (
-            (f"u:{username}", self.PER_USERNAME),
+            (f"u:{username}|{address}", self.PER_ACCOUNT),
             (f"a:{address}", self.PER_ADDRESS),
         ):
             times = self._recent(key, now)
@@ -108,12 +110,12 @@ class LoginThrottle:
             # Guesses at many different usernames would otherwise pile up entries forever.
             for key in list(self.failures):
                 self._recent(key, now)
-        self.failures[f"u:{username}"].append(now)
+        self.failures[f"u:{username}|{address}"].append(now)
         self.failures[f"a:{address}"].append(now)
 
-    def succeeded(self, username: str) -> None:
-        """Forget the account's failures after a good login."""
-        self.failures.pop(f"u:{username}", None)
+    def succeeded(self, username: str, address: str) -> None:
+        """Forget the account's failures from this address after a good login."""
+        self.failures.pop(f"u:{username}|{address}", None)
 
 
 throttle = LoginThrottle()
@@ -143,7 +145,7 @@ def login(data: LoginIn, request: Request, db: DB, response: Response) -> User:
     if user is None or not valid:
         throttle.failed(username, address)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong username or password")
-    throttle.succeeded(username)
+    throttle.succeeded(username, address)
     _start_session(db, response, user)
     return user
 

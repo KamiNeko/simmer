@@ -22,7 +22,7 @@ This is a summary of what the code does today. The details live in `backend/app/
 - Passwords are hashed with Argon2 (`argon2-cffi`) and must be at least 8 characters.
 - There is no public sign-up. The first admin is created on the setup screen, or from environment variables, and only while no users exist. Admins create every other account.
 - A login sets a random session token in an `HttpOnly`, `SameSite=Lax` cookie, marked `Secure` whenever the base URL is HTTPS. The database stores only a SHA-256 hash of the token. Sessions expire after `SIMMER_SESSION_DAYS` (30 by default).
-- Failed logins are throttled: after 10 failures for one username, or 30 from one address, within 15 minutes, further attempts get a 429 with `Retry-After` until the window passes.
+- Failed logins are throttled: after 10 failures for one username from one address, or 30 from one address, within 15 minutes, further attempts get a 429 with `Retry-After` until the window passes.
 - Unknown usernames still go through a password check, so response times don't reveal which accounts exist.
 - Changing your password signs out every other device. An admin resetting a password under **Users** signs that user out everywhere, except the admin's own current session.
 - The last admin can't be demoted, and admins can't delete themselves.

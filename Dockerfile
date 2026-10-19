@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     SIMMER_DATA_DIR=/data \
     SIMMER_STATIC_DIR=/app/static \
-    FORWARDED_ALLOW_IPS=*
+    FORWARDED_ALLOW_IPS="127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
 WORKDIR /app
 COPY backend/pyproject.toml ./
 COPY backend/app ./app
