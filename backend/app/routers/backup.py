@@ -1,5 +1,6 @@
 """Recipe export and import as a portable zip, and a full backup of the data directory."""
 
+import contextlib
 import io
 import json
 import sqlite3
@@ -20,8 +21,8 @@ from ..config import get_settings
 from ..crypto import KEY_FILE
 from ..deps import DB, AdminUser, CurrentUser
 from ..models import Recipe
+from ..recipe_service import RECIPE_LOAD, apply_recipe, unique_slug
 from ..schemas import ImportedRecipe, ImportFileResult, RecipeIn
-from .recipes import _LOAD, _apply, _unique_slug
 
 router = APIRouter(prefix="/api", tags=["backup"])
 
@@ -87,7 +88,7 @@ def _recipe_json(recipe: Recipe) -> dict:
 @router.get("/export")
 def export_recipes(user: CurrentUser, db: DB) -> FileResponse:
     """All recipes as recipes.json plus their photos, ready to import into another Simmer."""
-    recipes = list(db.scalars(select(Recipe).order_by(Recipe.title).options(*_LOAD)))
+    recipes = list(db.scalars(select(Recipe).order_by(Recipe.title).options(*RECIPE_LOAD)))
 
     def build(archive: zipfile.ZipFile) -> None:
         folder = photos.photos_dir()
@@ -184,16 +185,15 @@ def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult
         if recipe_in.title.strip().lower() in existing:
             result.skipped.append(recipe_in.title)
             continue
-        recipe = Recipe(slug=_unique_slug(db, recipe_in.title), author_id=user.id)
-        _apply(db, recipe, recipe_in)
+        recipe = Recipe(slug=unique_slug(db, recipe_in.title), author_id=user.id)
+        apply_recipe(db, recipe, recipe_in)
         db.add(recipe)
         db.flush()
         photo = _photo_bytes(archive, entry.get("photo"))
         if photo:
-            try:
+            # A damaged photo shouldn't stop the recipe itself from coming in.
+            with contextlib.suppress(photos.InvalidImage):
                 recipe.photo = photos.save_photo(photo, recipe.id)
-            except photos.InvalidImage:
-                pass
         search.index_recipe(db, recipe)
         existing.add(recipe_in.title.strip().lower())
         result.imported.append(ImportedRecipe(slug=recipe.slug, title=recipe.title))

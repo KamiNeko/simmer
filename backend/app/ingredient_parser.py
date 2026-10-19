@@ -25,7 +25,9 @@ _UNICODE_FRACTIONS = {
 
 _NUMBER = r"(?:\d*\s*[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?(?:\s+\d+/\d+)?|\d+/\d+)"
 _QUANTITY_RE = re.compile(
-    rf"^\s*(?P<q1>{_NUMBER})(?:\s*(?:-|–|to)\s*(?P<q2>{_NUMBER}))?\s*", re.UNICODE
+    # Ranges are written with hyphens, en dashes or "to".
+    rf"^\s*(?P<q1>{_NUMBER})(?:\s*(?:-|–|to)\s*(?P<q2>{_NUMBER}))?\s*",  # noqa: RUF001
+    re.UNICODE,
 )
 
 

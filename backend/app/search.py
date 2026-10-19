@@ -69,5 +69,6 @@ def search_ids(db: Session, query: str) -> list[int] | None:
     except OperationalError:
         ranked = []
     words = re.findall(r"\w+", query, flags=re.UNICODE)
-    ranked += [rid for rid in _substring_ids(db, words) if rid not in ranked]
+    seen = set(ranked)
+    ranked += [rid for rid in _substring_ids(db, words) if rid not in seen]
     return ranked

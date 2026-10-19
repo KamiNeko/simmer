@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from ..deps import DB, CurrentUser
 from ..models import PlanEntry, ShoppingRecipe, User
+from ..recipe_service import RECIPE_LOAD, get_recipe_by_slug, recipe_summary
 from ..schemas import (
     AuthorOut,
     PlanEntryIn,
@@ -15,8 +16,7 @@ from ..schemas import (
     ShoppingList,
 )
 from ..stats import stats_for
-from .recipes import _LOAD, _get_by_slug, _summary
-from .shopping import _list as shopping_list
+from .shopping import build_list as shopping_list
 
 router = APIRouter(prefix="/api/plan", tags=["plan"])
 
@@ -31,7 +31,7 @@ def _entries(db: DB, user: User, start: date, end: date) -> list[PlanEntryOut]:
             .order_by(PlanEntry.day, PlanEntry.id)
             .options(
                 selectinload(PlanEntry.added_by),
-                *(selectinload(PlanEntry.recipe).options(o) for o in _LOAD),
+                *(selectinload(PlanEntry.recipe).options(o) for o in RECIPE_LOAD),
             )
         )
     )
@@ -45,7 +45,7 @@ def _out(entry: PlanEntry, user: User, stats: dict) -> PlanEntryOut:
         day=entry.day,
         servings=entry.servings,
         note=entry.note,
-        recipe=_summary(entry.recipe, user, stats[entry.recipe_id]) if entry.recipe else None,
+        recipe=recipe_summary(entry.recipe, user, stats[entry.recipe_id]) if entry.recipe else None,
         added_by=AuthorOut.model_validate(entry.added_by) if entry.added_by else None,
     )
 
@@ -73,7 +73,7 @@ def add_entry(data: PlanEntryIn, user: CurrentUser, db: DB) -> PlanEntryOut:
     note = data.note.strip()
     if not data.recipe and not note:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Pick a recipe or write a note")
-    recipe = _get_by_slug(db, data.recipe) if data.recipe else None
+    recipe = get_recipe_by_slug(db, data.recipe) if data.recipe else None
     entry = PlanEntry(
         day=data.day,
         recipe=recipe,
