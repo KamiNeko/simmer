@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Hash, Plus, ShoppingBasket, Sparkles, User as UserIcon, Users } from "lucide-react";
+import { BookOpen, CalendarDays, Hash, Plus, ShoppingBasket, Sparkles, User as UserIcon, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
@@ -54,12 +54,17 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-6 overflow-y-auto p-3">
         <div className="space-y-0.5">
-          <NavItem to="/" active={!tag && !mine && !pathname.startsWith("/admin") && pathname !== "/shopping"} icon={<BookOpen />}>
+          <NavItem to="/" active={!tag && !mine && !pathname.startsWith("/admin") && pathname !== "/shopping" && pathname !== "/plan"} icon={<BookOpen />}>
             All Recipes
           </NavItem>
           {user && (
             <NavItem to="/?mine=1" active={mine} icon={<UserIcon />}>
               My Recipes
+            </NavItem>
+          )}
+          {user && (
+            <NavItem to="/plan" active={pathname === "/plan"} icon={<CalendarDays />}>
+              Meal plan
             </NavItem>
           )}
           {user && (

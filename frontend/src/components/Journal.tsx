@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChefHat, Lock, Trash2, X } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ function useJournal(slug: string) {
 }
 
 /** Rating and "I cooked this" controls shown under the recipe title. */
-export function CookBar({ recipe }: { recipe: Recipe }) {
+export function CookBar({ recipe, actions }: { recipe: Recipe; actions?: ReactNode }) {
   const { journal, refresh } = useJournal(recipe.slug);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
@@ -63,9 +63,12 @@ export function CookBar({ recipe }: { recipe: Recipe }) {
           ? `You cooked this ${recipe.my_cooked_count}× · last ${relativeDate(recipe.my_last_cooked_at)}`
           : "You haven't cooked this yet"}
       </div>
-      <Button size="sm" className="ml-auto" onClick={() => setOpen(true)}>
-        <ChefHat /> I cooked this
-      </Button>
+      <div className="ml-auto flex gap-2">
+        {actions}
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <ChefHat /> I cooked this
+        </Button>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

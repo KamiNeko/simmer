@@ -26,6 +26,7 @@ function useCrumb(): string | null {
   if (pathname === "/admin/ai") return "AI providers";
   if (pathname === "/import") return "Import recipe";
   if (pathname === "/shopping") return "Shopping list";
+  if (pathname === "/plan") return "Meal plan";
   if (slug) return recipe.data?.title ?? null;
   return null;
 }

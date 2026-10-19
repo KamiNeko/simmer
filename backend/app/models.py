@@ -1,9 +1,10 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -234,3 +235,20 @@ class ShoppingCheck(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     key: Mapped[str] = mapped_column(String(300))
+
+
+class PlanEntry(Base):
+    """A recipe or a note ("Leftovers", "Eating out") on a day of the household's meal plan."""
+
+    __tablename__ = "plan_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    recipe_id: Mapped[int | None] = mapped_column(ForeignKey("recipes.id", ondelete="CASCADE"))
+    servings: Mapped[float | None] = mapped_column(Float)
+    note: Mapped[str] = mapped_column(String(200), default="")
+    added_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    recipe: Mapped[Recipe | None] = relationship()
+    added_by: Mapped[User | None] = relationship()
