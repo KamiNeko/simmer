@@ -1,0 +1,11 @@
+services:
+  simmer:
+    image: ghcr.io/kamineko/simmer:latest
+    build: .
+    container_name: simmer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    env_file: .env
