@@ -164,6 +164,12 @@ export interface PlanEntryInput {
   note?: string;
 }
 
+export interface ImportFileResult {
+  imported: { slug: string; title: string }[];
+  skipped: string[];
+  failed: string[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -277,6 +283,12 @@ export const api = {
   planUpdate: (id: number, data: { day?: string; servings?: number; note?: string }) => request<PlanEntry>("PATCH", `/api/plan/${id}`, data),
   planDelete: (id: number) => request<void>("DELETE", `/api/plan/${id}`),
   planToShopping: (start: string, end: string) => request<ShoppingList>("POST", "/api/plan/to-shopping", { start, end }),
+
+  importFile: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<ImportFileResult>("POST", "/api/import/file", form);
+  },
 
   tags: () => request<Tag[]>("GET", "/api/tags"),
   parseIngredients: (lines: string[]) => request<Ingredient[]>("POST", "/api/parse-ingredients", { lines }),

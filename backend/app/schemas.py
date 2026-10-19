@@ -321,3 +321,17 @@ class PlanEntryOut(BaseModel):
 class PlanRange(BaseModel):
     start: date
     end: date
+
+
+# Export and import
+
+
+class ImportedRecipe(BaseModel):
+    slug: str
+    title: str
+
+
+class ImportFileResult(BaseModel):
+    imported: list[ImportedRecipe] = []
+    skipped: list[str] = Field(default=[], description="Titles that already exist")
+    failed: list[str] = []

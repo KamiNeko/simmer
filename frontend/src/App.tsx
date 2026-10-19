@@ -11,6 +11,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RecipeDetail } from "./pages/RecipeDetail";
 import { RecipeEditor } from "./pages/RecipeEditor";
 import { SettingsPage } from "./pages/SettingsPage";
+import { BackupPage } from "./pages/BackupPage";
 import { PlanPage } from "./pages/PlanPage";
 import { ShoppingPage } from "./pages/ShoppingPage";
 import { SetupPage } from "./pages/SetupPage";
@@ -40,6 +41,7 @@ export function App() {
           <Route path="plan" element={<PlanPage />} />
           <Route path="recipes/:slug/edit" element={<RecipeEditor />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="backup" element={<BackupPage />} />
           <Route path="admin/users" element={<UsersPage />} />
           <Route path="admin/ai" element={<AIProvidersPage />} />
         </Route>

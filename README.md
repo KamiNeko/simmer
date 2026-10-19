@@ -19,7 +19,7 @@ Simmer listens on port 8080. Put it behind your reverse proxy (Nginx Proxy Manag
 
 If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first visit shows a setup screen to create the admin account. Further accounts are created by the admin under **Users**; there is no public sign-up.
 
-**Backup:** everything lives in `./data` (the SQLite database, recipe photos and, unless you set `SIMMER_SECRET_KEY`, the generated `secret.key` that encrypts the AI keys). Copy that folder.
+**Backup:** everything lives in `./data` (the SQLite database, recipe photos and, unless you set `SIMMER_SECRET_KEY`, the generated `secret.key` that encrypts the AI keys). Copy that folder, or download it as a zip under **Export & backup** (see below).
 
 **Updates:** `git pull && docker compose up -d --build`. Database migrations run automatically on start.
 
@@ -64,6 +64,14 @@ Amounts are stored as written and only converted for display, so switching never
 ## Shopping list
 
 Press **Add to list** on a recipe to put it on your shopping list at the servings you are viewing. The list adds up ingredients across recipes (weights and ingredients with a density in grams, other volumes in millilitres, everything else in its own unit) and shows them in your preferred units, with the recipes each line comes from. You can change servings per recipe, add your own items, tick things off as they go in the basket, copy the open items as text, or clear the list. Each user has their own list.
+
+## Export and backup
+
+**Export & backup** is in the account menu (and under Admin in the sidebar).
+
+- **Download recipes** gives any signed-in user a zip with `recipes.json` and the photos. It holds every recipe with its groups, steps, tags and source. Ratings, cook logs and notes are not included.
+- **Import recipes** reads such a zip (or a bare `recipes.json`) into this Simmer. A recipe whose title already exists is skipped, and the person importing becomes the author.
+- **Download full backup** is for admins. It is a zip of the data folder: a consistent copy of the database taken while Simmer runs, the photos, and `secret.key` if present. To restore it, stop Simmer, unpack the zip into the data folder, and start it again.
 
 ## Importing recipes
 
