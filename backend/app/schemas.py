@@ -80,7 +80,7 @@ class IngredientOut(IngredientIn, ORMModel):
 
 class GroupIn(BaseModel):
     name: str = Field(default="", max_length=120)
-    ingredients: list[IngredientIn] = []
+    ingredients: list[IngredientIn] = Field(default=[], max_length=200)
 
 
 class GroupOut(ORMModel):
@@ -91,7 +91,7 @@ class GroupOut(ORMModel):
 
 class StepIn(BaseModel):
     section: str = Field(default="", max_length=120)
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=10_000)
 
 
 class StepOut(StepIn, ORMModel):
@@ -105,15 +105,15 @@ class AuthorOut(ORMModel):
 
 class RecipeIn(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    description: str = ""
+    description: str = Field(default="", max_length=20_000)
     source_url: HttpUrl | None = None
     servings: float | None = Field(default=None, gt=0)
     prep_minutes: int | None = Field(default=None, ge=0)
     cook_minutes: int | None = Field(default=None, ge=0)
     total_minutes: int | None = Field(default=None, ge=0)
-    tags: list[str] = []
-    groups: list[GroupIn] = []
-    steps: list[StepIn] = []
+    tags: list[str] = Field(default=[], max_length=50)
+    groups: list[GroupIn] = Field(default=[], max_length=50)
+    steps: list[StepIn] = Field(default=[], max_length=200)
 
     @field_validator("tags")
     @classmethod

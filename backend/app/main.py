@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 from . import photos
 from .config import get_settings
 from .db import get_db, get_engine
+from .hardening import HardeningMiddleware
 from .migrations import upgrade_database
 from .models import IngredientGroup, Recipe, Role, User
 from .routers import ai, auth, backup, journal, plan, recipes, shopping, users
@@ -48,8 +49,13 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Simmer", lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json"
+    title="Simmer",
+    lifespan=lifespan,
+    docs_url="/api/docs",
+    redoc_url=None,
+    openapi_url="/api/openapi.json",
 )
+app.add_middleware(HardeningMiddleware)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(recipes.router)

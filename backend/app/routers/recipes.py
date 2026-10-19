@@ -230,9 +230,9 @@ def _editable(db: DB, slug: str, user: User) -> Recipe:
 
 
 @router.put("/recipes/{slug}/photo", response_model=RecipeOut)
-async def upload_photo(slug: str, file: UploadFile, user: CurrentUser, db: DB) -> RecipeOut:
+def upload_photo(slug: str, file: UploadFile, user: CurrentUser, db: DB) -> RecipeOut:
     recipe = _editable(db, slug, user)
-    data = await file.read(photos.MAX_UPLOAD_BYTES + 1)
+    data = file.file.read(photos.MAX_UPLOAD_BYTES + 1)
     try:
         name = photos.save_photo(data, recipe.id)
     except photos.InvalidImage as exc:
