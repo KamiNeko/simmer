@@ -15,7 +15,8 @@
   --card-foreground: #1f1f1f;
   --popover: #ffffff;
   --popover-foreground: #1f1f1f;
-  --primary: #e0623f;
+  /* Dark enough for white text on it and for primary-coloured text on the light surfaces (WCAG AA, 4.5:1). */
+  --primary: #b03c1c;
   --primary-foreground: #ffffff;
   --secondary: #ebe9e5;
   --secondary-foreground: #1f1f1f;
@@ -26,7 +27,7 @@
   --destructive: #d23b3b;
   --border: #e2dfda;
   --input: #dcd8d2;
-  --ring: #e0623f;
+  --ring: #b03c1c;
 }
 
 .dark {

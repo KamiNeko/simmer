@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CalendarDays, CalendarPlus, ChefHat, Check, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, ShoppingBasket, Timer, Trash2, User, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import {
@@ -16,12 +16,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CookBar, NotesSection } from "@/components/Journal";
 import { PlanDialog } from "@/components/PlanDialog";
-import { IngredientLine, useRecipeView, ViewControls } from "@/components/RecipeView";
+import { IngredientLine, useHandedOverView, useRecipeView, ViewControls } from "@/components/RecipeView";
 import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
-import { useRecipe } from "@/lib/queries";
+import { renamedSlugs, useRecipe } from "@/lib/queries";
 import { useAuth } from "@/lib/auth";
 import { convertText } from "@/lib/convert";
 import { formatNumber } from "@/lib/quantity";
@@ -46,7 +46,7 @@ export function RecipeDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [planning, setPlanning] = useState(false);
   const recipe = useRecipe(slug);
-  const view = useRecipeView(recipe.data);
+  const view = useRecipeView(recipe.data, useHandedOverView(slug));
   const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
   const listed = shopping.data?.recipes.find((e) => e.recipe.slug === slug);
   const addToList = useMutation({
@@ -68,9 +68,13 @@ export function RecipeDetail() {
       // The shopping list and meal plan show recipes too.
       client.invalidateQueries({ queryKey: ["shopping"] });
       client.invalidateQueries({ queryKey: ["plan"] });
-      navigate(`/${search}`);
+      // The recipe's page is gone, so don't leave it in history for Back to find.
+      navigate(`/${search}`, { replace: true });
     },
   });
+
+  const renamedTo = slug && renamedSlugs.get(slug);
+  if (renamedTo) return <Navigate to={`/recipes/${renamedTo}${search}`} replace />;
 
   if (recipe.isLoading) return <div className="text-muted-foreground p-8 text-sm">Loading…</div>;
   if (recipe.isError || !recipe.data)
@@ -110,7 +114,7 @@ export function RecipeDetail() {
         {r.can_edit && (
           <div className="ml-auto flex items-center gap-1">
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/recipes/${r.slug}/edit${search}`}>
+              <Link to={`/recipes/${r.slug}/edit${search}`} state={{ fromRecipe: true }}>
                 <Pencil /> Edit
               </Link>
             </Button>
@@ -192,7 +196,12 @@ export function RecipeDetail() {
             </Button>
           )}
           <Button size="sm" className={user ? "" : "ml-auto"} asChild>
-            <Link to={`/recipes/${r.slug}/cook?servings=${view.servings}&units=${view.units}`} aria-label="Cooking view" title="Cooking view">
+            <Link
+              to={`/recipes/${r.slug}/cook?servings=${view.servings}&units=${view.units}`}
+              state={{ fromRecipe: true }}
+              aria-label="Cooking view"
+              title="Cooking view"
+            >
               <CookingPot /> <span className="hidden sm:inline">Cook</span>
             </Link>
           </Button>

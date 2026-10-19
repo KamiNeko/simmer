@@ -24,7 +24,7 @@ function NavItem({ to, active, icon, children, count }: { to: string; active: bo
         <span
           className={cn(
             "rounded-full px-1.5 font-mono text-[10px]",
-            active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
+            active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
           )}
         >
           {count}

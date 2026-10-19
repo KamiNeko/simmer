@@ -26,7 +26,8 @@ export function RecipeList() {
   const [filter, setFilter] = useState("");
   const tag = params.get("tag") ?? undefined;
   const q = params.get("q") ?? undefined;
-  const mine = params.get("mine") === "1";
+  // Visitors have no recipes of their own, so they see them all.
+  const mine = params.get("mine") === "1" && !!user;
   const sortParam = params.get("sort") ?? undefined;
   const sort = sortParam ?? (q ? "relevance" : "updated");
 
@@ -112,7 +113,7 @@ export function RecipeList() {
         {recipes.isSuccess && visible.length === 0 && (
           <div className="text-muted-foreground p-6 text-center text-sm">
             <UtensilsCrossed className="mx-auto mb-2 size-6 opacity-60" />
-            {recipes.data.length ? "Nothing matches this filter." : "No recipes yet."}
+            {recipes.data.length ? "Nothing matches this filter." : q || tag || mine ? "No recipes match." : "No recipes yet."}
           </div>
         )}
         {visible.map((recipe) => {

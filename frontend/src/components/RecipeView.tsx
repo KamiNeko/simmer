@@ -1,5 +1,5 @@
 import { Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Ingredient, Recipe, UnitSystem } from "@/lib/api";
@@ -43,6 +43,23 @@ export function useRecipeView(recipe: Recipe | undefined, initial?: { servings?:
 }
 
 export type RecipeViewState = ReturnType<typeof useRecipeView>;
+
+type ViewChoice = { servings: number; units: UnitSystem };
+const handedOver = new Map<string, ViewChoice>();
+
+/** Pass the cooking view's servings and units back to the recipe page it returns to. */
+export function handOverView(slug: string, choice: ViewChoice) {
+  handedOver.set(slug, choice);
+}
+
+/** The servings and units handed over for this recipe, used once by the page that mounts next. */
+export function useHandedOverView(slug: string | undefined) {
+  const [choice] = useState(() => (slug ? handedOver.get(slug) : undefined));
+  useEffect(() => {
+    if (slug) handedOver.delete(slug);
+  }, [slug]);
+  return choice;
+}
 
 const UNIT_OPTIONS: { value: UnitSystem; label: string; short?: string; title: string }[] = [
   { value: "metric", label: "Metric", title: "Grams, millilitres and °C" },

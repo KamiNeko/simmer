@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, Sun, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { IngredientLine, useRecipeView, ViewControls } from "@/components/RecipeView";
+import { handOverView, IngredientLine, useRecipeView, ViewControls } from "@/components/RecipeView";
 import { Button } from "@/components/ui/button";
 import type { UnitSystem } from "@/lib/api";
 import { useRecipe } from "@/lib/queries";
@@ -49,6 +49,8 @@ const UNITS: UnitSystem[] = ["metric", "us", "original"];
 export function CookingView() {
   const { slug } = useParams();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const fromRecipe = !!(useLocation().state as { fromRecipe?: boolean } | null)?.fromRecipe;
   const recipe = useRecipe(slug);
   const servingsParam = Number(params.get("servings"));
   const unitsParam = params.get("units") as UnitSystem | null;
@@ -88,6 +90,13 @@ export function CookingView() {
   if (!recipe.data) return <div className="text-muted-foreground p-8 text-sm">Recipe not found.</div>;
   const r = recipe.data;
 
+  // Return to the recipe with the servings and units chosen here, going back rather than adding history.
+  const leave = () => {
+    handOverView(r.slug, { servings: view.servings, units: view.units });
+    if (fromRecipe) navigate(-1);
+    else navigate(`/recipes/${r.slug}`, { replace: true });
+  };
+
   const toggle = (key: string) =>
     setChecked((prev) => {
       const next = new Set(prev);
@@ -100,7 +109,14 @@ export function CookingView() {
     <div className="bg-panel flex h-full flex-col">
       <header className="flex items-center gap-3 border-b px-4 py-3 md:px-6">
         <Button variant="ghost" size="icon" asChild>
-          <Link to={`/recipes/${r.slug}`} aria-label="Leave cooking view">
+          <Link
+            to={`/recipes/${r.slug}`}
+            onClick={(e) => {
+              e.preventDefault();
+              leave();
+            }}
+            aria-label="Leave cooking view"
+          >
             <X />
           </Link>
         </Button>
@@ -172,7 +188,8 @@ export function CookingView() {
                     aria-current={active ? "step" : undefined}
                     className={cn(
                       "flex w-full gap-4 rounded-xl border p-4 text-left transition-colors",
-                      active ? "border-primary bg-primary/10" : "border-transparent opacity-55 hover:opacity-80",
+                      // Dim other steps with a muted colour rather than opacity, which would push them below readable contrast.
+                      active ? "border-primary bg-primary/10" : "text-muted-foreground hover:text-foreground border-transparent",
                     )}
                   >
                     <span

@@ -43,7 +43,8 @@ function EntryRow({ entry, days, onChange, onRemove }: { entry: PlanEntry; days:
             {r.title}
           </Link>
         ) : (
-          <p className="text-foreground/90 truncate italic">{entry.note}</p>
+          // Notes wrap in full: unlike a recipe there is nowhere else to read them.
+          <p className="text-foreground/90 italic [overflow-wrap:anywhere] whitespace-pre-line">{entry.note}</p>
         )}
         {entry.added_by && <p className="text-muted-foreground hidden truncate text-xs sm:block">Added by {entry.added_by.display_name}</p>}
         {stepper("mt-1 w-fit sm:hidden")}
