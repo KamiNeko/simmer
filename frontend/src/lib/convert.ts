@@ -142,8 +142,9 @@ export function formatAmount(amount: Amount): string {
 // Step text
 
 const NUMBER = String.raw`\d+(?:[.,]\d+)?`;
-const FAHRENHEIT = String.raw`\s*(?:°|º|degrees?)\s*F(?:ahrenheit)?\b|F\b`;
-const CELSIUS = String.raw`\s*(?:°|º|degrees?)\s*C(?:elsius)?\b|C\b`;
+// A bare "C" needs the degree sign or word, or "2C milk" (two cups) would become a temperature.
+const FAHRENHEIT = String.raw`\s*(?:°|º|degrees?)\s*F(?:ahrenheit)?\b|\s?F\b`;
+const CELSIUS = String.raw`\s*(?:°|º|degrees?)\s*C(?:elsius)?\b`;
 const INCH = String.raw`\s*-?\s*(?:inch(?:es)?\b|in\.|″|")`;
 const CM = String.raw`\s*(?:cm|centimet(?:er|re)s?)\b`;
 

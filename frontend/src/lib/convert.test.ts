@@ -78,6 +78,13 @@ describe("convertText", () => {
 
   it("converts to US", () => {
     expect(text("Bake at 200°C in a 20 x 30 cm dish, slices 1 cm thick.", "us")).toBe("Bake at 390 °F in a 8 × 12 inch dish, slices ½ inch thick.");
+    expect(text("Heat to 180 degrees C.", "us")).toBe("Heat to 355 °F.");
+  });
+
+  it("needs a degree sign or word for Celsius, and allows a space before F", () => {
+    expect(text("Use 2C milk.", "us")).toBe("Use 2C milk.");
+    expect(text("Bake at 350 F.", "metric")).toBe("Bake at 175 °C.");
+    expect(text("Bake at 325 - 350 F.", "metric")).toBe("Bake at 165–175 °C.");
   });
 
   it("leaves the original alone", () => {
