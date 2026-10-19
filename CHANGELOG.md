@@ -2,7 +2,7 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## 0.1.0
+## 0.1.0 (2026-10-19)
 
 The first release.
 
@@ -40,7 +40,9 @@ The first release.
 
 ### Security hardening
 
-- Login throttling per account and per address, and signing out other devices when a password changes.
+- Login throttling per address and per username from one address, so guessing from elsewhere can't lock an account out, and signing out other devices when a password changes.
+- The Docker image trusts `X-Forwarded-For` only from loopback and private network addresses.
+- Recipe file imports are capped at 5000 recipes and limit photo decoding, and Simmer's data files are readable by its own user only.
 - A strict Content-Security-Policy and other security headers, and a same-origin check on every request that changes data.
 - Request body limits enforced before the body is read, with larger uploads only for signed-in users.
 - Link imports only fetch public addresses, check the address actually connected to, and stop after 60 seconds or 5 MB.
@@ -52,4 +54,5 @@ The first release.
 - Frontend type checking, oxlint and component tests with Vitest.
 - Shared recipe helpers, batched stats queries and indexes on foreign keys.
 - CI runs Ruff, pytest, the frontend lint, tests and build, and publishes the Docker image from `main`.
-- Documentation for self-hosting, AI import, architecture, contributing and security.
+- Documentation for self-hosting, AI import, architecture, contributing and security, and a README with screenshots generated from a demo household (`npm run screenshots`).
+- Light-mode colours meet WCAG AA contrast, the theme follows the system until you choose one, and the menu drawer and dialogs work with the keyboard.
