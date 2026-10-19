@@ -210,7 +210,9 @@ export function ImportPage() {
                 <ProviderSelect providers={providers.data!} value={choice} onChange={setProvider} allowNone={mode === "url"} className="w-64" />
               </div>
             ) : (
-              providers.isSuccess && (
+              // Text and photos have their own note: they can't be imported at all without AI.
+              providers.isSuccess &&
+              mode === "url" && (
                 <p className="text-muted-foreground max-w-md text-xs">
                   No AI provider is set up, so links are imported from the page's recipe data as is.
                   {user?.role === "admin" && " You can add one under AI providers."}

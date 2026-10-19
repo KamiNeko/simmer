@@ -163,6 +163,23 @@ describe("menu drawer on small screens", () => {
   });
 });
 
+describe("import page without AI", () => {
+  it("explains link imports only in link mode", async () => {
+    fakeApi({ "GET /api/ai/providers": [] });
+    renderApp("/import");
+    const linkNote = /links are imported from the page's recipe data/;
+    expect(await screen.findByText(linkNote)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
+    expect(await screen.findByText(/importing text needs an AI provider/i)).toBeInTheDocument();
+    expect(screen.queryByText(linkNote)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /from photos/i }));
+    expect(await screen.findByText(/importing photos needs an AI provider/i)).toBeInTheDocument();
+    expect(screen.queryByText(linkNote)).not.toBeInTheDocument();
+  });
+});
+
 describe("history", () => {
   it("goes back to the recipe after saving an edit, rather than adding it again", async () => {
     const soup = recipe();
