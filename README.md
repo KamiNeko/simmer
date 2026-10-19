@@ -1,8 +1,8 @@
 # Simmer
 
-A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), and accounts for the people who add and edit recipes.
+A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked.
 
-This is milestone 1 of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c). Ratings, cooking notes, photos, LLM import and unit conversion follow in later milestones.
+Milestones 1 and 2 of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done. LLM import and unit conversion follow next.
 
 ## Run it with Docker Compose
 
@@ -19,7 +19,7 @@ Simmer listens on port 8080. Put it behind your reverse proxy (Nginx Proxy Manag
 
 If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first visit shows a setup screen to create the admin account. Further accounts are created by the admin under **Users**; there is no public sign-up.
 
-**Backup:** everything lives in `./data` (the SQLite database). Copy that folder.
+**Backup:** everything lives in `./data` (the SQLite database and recipe photos). Copy that folder.
 
 **Updates:** `git pull && docker compose up -d --build`. Database migrations run automatically on start.
 
@@ -31,7 +31,7 @@ If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first vi
 | `SIMMER_SECRET_KEY` | `change-me` | Secret for encrypting stored API keys (used from milestone 3) |
 | `SIMMER_BASE_URL` | `http://localhost:8080` | Public URL, used in link previews |
 | `SIMMER_COOKIE_SECURE` | `false` | Send the login cookie over HTTPS only |
-| `SIMMER_DATA_DIR` | `/data` in Docker | Where the database is stored |
+| `SIMMER_DATA_DIR` | `/data` in Docker | Where the database and photos are stored |
 
 ## Who can do what
 
@@ -40,6 +40,8 @@ If `SIMMER_ADMIN_USERNAME` and `SIMMER_ADMIN_PASSWORD` are not set, the first vi
 | Browse and search recipes | ✓ | ✓ | ✓ |
 | Add recipes | | ✓ | ✓ |
 | Edit or delete recipes | | own | all |
+| See average rating and cooked count | ✓ | ✓ | ✓ |
+| Rate, log cooking, keep private notes | | ✓ | ✓ |
 | Manage accounts | | | ✓ |
 
 ## Development

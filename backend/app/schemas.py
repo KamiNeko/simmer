@@ -136,9 +136,19 @@ class RecipeSummary(ORMModel):
     tags: list[str]
     author: AuthorOut | None
     ingredient_preview: str
+    photo_url: str | None = None
+    thumb_url: str | None = None
     created_at: UTCDateTime
     updated_at: UTCDateTime
     can_edit: bool = False
+    # Public totals across all users.
+    avg_rating: float | None = None
+    rating_count: int = 0
+    cooked_count: int = 0
+    # The logged-in user's own values; empty for visitors.
+    my_rating: int | None = None
+    my_cooked_count: int = 0
+    my_last_cooked_at: UTCDateTime | None = None
 
 
 class RecipeOut(RecipeSummary):
@@ -156,3 +166,45 @@ class TagOut(BaseModel):
 
 class ParseIn(BaseModel):
     lines: list[str] = Field(max_length=200)
+
+
+# Ratings, cooking log and private notes
+
+
+class RatingIn(BaseModel):
+    stars: int = Field(ge=1, le=5)
+
+
+class CookIn(BaseModel):
+    note: str = Field(default="", max_length=5000)
+
+
+class CommentIn(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+
+
+class CommentUpdate(BaseModel):
+    text: str | None = Field(default=None, min_length=1, max_length=5000)
+    done: bool | None = None
+
+
+class CommentOut(ORMModel):
+    id: int
+    text: str
+    done: bool
+    created_at: UTCDateTime
+    cook_log_id: int | None
+    cooked_at: UTCDateTime | None = None
+
+
+class CookOut(ORMModel):
+    id: int
+    cooked_at: UTCDateTime
+
+
+class Journal(BaseModel):
+    """Everything private the logged-in user has recorded for one recipe."""
+
+    rating: int | None
+    cooks: list[CookOut]
+    comments: list[CommentOut]

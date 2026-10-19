@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { GroupEditor } from "@/components/editor/GroupEditor";
+import { type PhotoChange, PhotoField } from "@/components/editor/PhotoField";
 import { SortableItem, SortableList } from "@/components/editor/Sortable";
 import { TagInput } from "@/components/editor/TagInput";
 import { draftFromRecipe, emptyRow, type RecipeDraft, toInput, uid } from "@/components/editor/types";
@@ -32,14 +33,23 @@ export function RecipeEditor() {
   const tags = useQuery({ queryKey: ["tags"], queryFn: api.tags });
   const [draft, setDraft] = useState<RecipeDraft | null>(slug ? null : draftFromRecipe());
   const [errors, setErrors] = useState<string[]>([]);
+  const [photo, setPhoto] = useState<PhotoChange>({ kind: "keep" });
 
   useEffect(() => {
     if (existing.data && !draft) setDraft(draftFromRecipe(existing.data));
   }, [existing.data, draft]);
 
   const save = useMutation({
-    mutationFn: (input: ReturnType<typeof toInput>["input"] & object) =>
-      slug ? api.updateRecipe(slug, input) : api.createRecipe(input),
+    mutationFn: async (input: ReturnType<typeof toInput>["input"] & object) => {
+      let recipe = slug ? await api.updateRecipe(slug, input) : await api.createRecipe(input);
+      try {
+        if (photo.kind === "replace") recipe = await api.uploadPhoto(recipe.slug, photo.file);
+        if (photo.kind === "remove" && recipe.photo_url) recipe = await api.deletePhoto(recipe.slug);
+      } catch (e) {
+        toast.error(`Recipe saved, but the photo failed: ${(e as Error).message}`);
+      }
+      return recipe;
+    },
     onSuccess: (recipe) => {
       client.invalidateQueries({ queryKey: ["recipes"] });
       client.invalidateQueries({ queryKey: ["tags"] });
@@ -120,6 +130,9 @@ export function RecipeEditor() {
               <Input inputMode="numeric" value={draft.total_minutes} onChange={(e) => set("total_minutes", e.target.value)} />
             </Field>
           </div>
+          <Field label="Photo">
+            <PhotoField current={existing.data?.photo_url ?? null} value={photo} onChange={setPhoto} />
+          </Field>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Tags">
               <TagInput value={draft.tags} onChange={(t) => set("tags", t)} suggestions={tags.data?.map((t) => t.name) ?? []} />

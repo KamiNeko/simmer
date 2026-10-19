@@ -48,9 +48,17 @@ export interface RecipeSummary {
   tags: string[];
   author: { id: number; display_name: string } | null;
   ingredient_preview: string;
+  photo_url: string | null;
+  thumb_url: string | null;
   created_at: string;
   updated_at: string;
   can_edit: boolean;
+  avg_rating: number | null;
+  rating_count: number;
+  cooked_count: number;
+  my_rating: number | null;
+  my_cooked_count: number;
+  my_last_cooked_at: string | null;
 }
 
 export interface Recipe extends RecipeSummary {
@@ -74,6 +82,26 @@ export interface RecipeInput {
   steps: Step[];
 }
 
+export interface Comment {
+  id: number;
+  text: string;
+  done: boolean;
+  created_at: string;
+  cook_log_id: number | null;
+  cooked_at: string | null;
+}
+
+export interface Cook {
+  id: number;
+  cooked_at: string;
+}
+
+export interface Journal {
+  rating: number | null;
+  cooks: Cook[];
+  comments: Comment[];
+}
+
 export interface Tag {
   name: string;
   count: number;
@@ -89,11 +117,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const isForm = body instanceof FormData;
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: body === undefined || isForm ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });
   if (!response.ok) {
     let message = response.statusText;
@@ -137,6 +166,26 @@ export const api = {
   updateRecipe: (slug: string, data: RecipeInput) =>
     request<Recipe>("PUT", `/api/recipes/${encodeURIComponent(slug)}`, data),
   deleteRecipe: (slug: string) => request<void>("DELETE", `/api/recipes/${encodeURIComponent(slug)}`),
+  uploadPhoto: (slug: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<Recipe>("PUT", `/api/recipes/${encodeURIComponent(slug)}/photo`, form);
+  },
+  deletePhoto: (slug: string) => request<Recipe>("DELETE", `/api/recipes/${encodeURIComponent(slug)}/photo`),
+
+  journal: (slug: string) => request<Journal>("GET", `/api/recipes/${encodeURIComponent(slug)}/journal`),
+  rate: (slug: string, stars: number) =>
+    request<Journal>("PUT", `/api/recipes/${encodeURIComponent(slug)}/rating`, { stars }),
+  unrate: (slug: string) => request<Journal>("DELETE", `/api/recipes/${encodeURIComponent(slug)}/rating`),
+  cooked: (slug: string, note: string) =>
+    request<Journal>("POST", `/api/recipes/${encodeURIComponent(slug)}/cooked`, { note }),
+  undoCooked: (id: number) => request<void>("DELETE", `/api/cooked/${id}`),
+  addComment: (slug: string, text: string) =>
+    request<Comment>("POST", `/api/recipes/${encodeURIComponent(slug)}/comments`, { text }),
+  updateComment: (id: number, data: { text?: string; done?: boolean }) =>
+    request<Comment>("PATCH", `/api/comments/${id}`, data),
+  deleteComment: (id: number) => request<void>("DELETE", `/api/comments/${id}`),
+
   tags: () => request<Tag[]>("GET", "/api/tags"),
   parseIngredients: (lines: string[]) => request<Ingredient[]>("POST", "/api/parse-ingredients", { lines }),
 };
