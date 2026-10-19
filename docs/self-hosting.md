@@ -131,6 +131,8 @@ On start, Simmer runs any new database migrations before it serves requests (`up
 
 CI publishes `ghcr.io/kamineko/simmer:latest` from the main branch, which is the image name in the compose file, and a version tag such as `ghcr.io/kamineko/simmer:0.1.0` for each release. Pin a version in `docker-compose.yml` to update only when you choose. If you can pull it, `docker compose pull && docker compose up -d` updates without building.
 
+**About Simmer** in the account menu shows the version you run and the commit its image was built from. Images built by CI fill in the commit; to fill it in when you build yourself, run `docker compose build --build-arg SIMMER_COMMIT=$(git rev-parse HEAD)` before `docker compose up -d`.
+
 Migrations only go forward on their own. To go back to an older version, restore the backup you took before updating.
 
 ## Troubleshooting

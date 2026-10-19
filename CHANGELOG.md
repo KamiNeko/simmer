@@ -2,6 +2,10 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- **About Simmer** in the account menu shows the version and the commit the Docker image was built from, with links to GitHub, the changelog and the issue tracker. Include the version when you report a bug.
+
 ## 0.2.0 (2026-10-19)
 
 ### Import

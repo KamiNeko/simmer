@@ -1,3 +1,5 @@
+from importlib.metadata import version
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -87,3 +89,19 @@ def test_bootstrap_admin_only_without_users(client, monkeypatch):
     with TestClient(main.app):
         pass
     assert _user_count() == 1
+
+
+def test_version_needs_login(client):
+    assert client.get("/api/version").status_code == 401
+
+
+def test_version_reports_the_build_commit(admin, monkeypatch):
+    monkeypatch.setenv("SIMMER_COMMIT", "827aa0a1b2c3")
+    get_settings.cache_clear()
+    body = admin.get("/api/version").json()
+    assert body["version"] == version("simmer")
+    assert body["commit"] == "827aa0a1b2c3"
+
+
+def test_version_without_a_build_commit(admin):
+    assert admin.get("/api/version").json()["commit"] is None

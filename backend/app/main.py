@@ -2,6 +2,7 @@ import html
 import os
 import re
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 from . import photos
 from .config import get_settings
 from .db import get_db, get_engine
+from .deps import CurrentUser
 from .hardening import HardeningMiddleware
 from .migrations import upgrade_database
 from .models import IngredientGroup, Recipe, Role, User
@@ -86,6 +88,12 @@ def photo(name: str) -> FileResponse:
 def health() -> dict[str, str]:
     """A simple check that the server is up, used by the Docker health check."""
     return {"status": "ok"}
+
+
+@app.get("/api/version")
+def app_version(_: CurrentUser) -> dict[str, str | None]:
+    """The running version and the git commit it was built from, for bug reports."""
+    return {"version": version("simmer"), "commit": get_settings().commit or None}
 
 
 def _recipe_meta(slug: str) -> str:

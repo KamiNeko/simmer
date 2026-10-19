@@ -18,6 +18,9 @@ COPY backend/pyproject.toml ./
 COPY backend/app ./app
 RUN pip install --no-cache-dir . && useradd --system --uid 1000 simmer && mkdir -p /data && chown simmer /data
 COPY --from=frontend /app/dist ./static
+# Shown under About in the account menu. Set last, so a new commit doesn't rebuild the layers above.
+ARG SIMMER_COMMIT
+ENV SIMMER_COMMIT=$SIMMER_COMMIT
 USER simmer
 VOLUME /data
 EXPOSE 8080

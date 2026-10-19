@@ -211,8 +211,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 }
 
+export interface VersionInfo {
+  version: string;
+  /** The git commit the Docker image was built from, or null for a build from source. */
+  commit: string | null;
+}
+
 export const api = {
   me: () => request<AuthState>("GET", "/api/auth/me"),
+  version: () => request<VersionInfo>("GET", "/api/version"),
   setup: (data: { username: string; display_name: string; password: string }) =>
     request<User>("POST", "/api/auth/setup", data),
   login: (username: string, password: string) => request<User>("POST", "/api/auth/login", { username, password }),

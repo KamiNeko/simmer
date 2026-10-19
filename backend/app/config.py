@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     # Unset means: secure cookies whenever base_url is https.
     cookie_secure: bool | None = None
     session_days: int = 30
+    # The git commit the Docker image was built from, set by the image build.
+    commit: str | None = None
 
     @property
     def secure_cookies(self) -> bool:
