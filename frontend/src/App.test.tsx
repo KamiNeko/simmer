@@ -187,6 +187,19 @@ describe("import page without AI", () => {
   });
 });
 
+describe("users page", () => {
+  it("asks in a dialog before deleting an account", async () => {
+    const sam = { ...USER, id: 2, username: "sam", display_name: "Sam", role: "member" };
+    const api = fakeApi({ "GET /api/users": [USER, sam], "DELETE /api/users/2": () => null });
+    renderApp("/admin/users");
+    await userEvent.click(await screen.findByRole("button", { name: "Actions for Sam" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /delete account/i }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete the account of Sam?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(api.mock.calls.some(([url, init]) => init?.method === "DELETE" && String(url).endsWith("/api/users/2"))).toBe(true));
+  });
+});
+
 describe("history", () => {
   it("goes back to the recipe after saving an edit, rather than adding it again", async () => {
     const soup = recipe();

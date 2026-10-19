@@ -4,6 +4,16 @@ import { type FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -115,6 +125,7 @@ export function UsersPage() {
   const client = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [resetting, setResetting] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState<User | null>(null);
   const users = useQuery({ queryKey: ["users"], queryFn: api.users, enabled: isAdmin });
   const update = useMutation({
     mutationFn: ({ id, role }: { id: number; role: Role }) => api.updateUser(id, { role }),
@@ -177,10 +188,7 @@ export function UsersPage() {
                 {u.id !== me?.id && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={() => confirm(`Delete the account of ${u.display_name}? Their recipes stay.`) && remove.mutate(u.id)}
-                    >
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(u)}>
                       <Trash2 /> Delete account
                     </DropdownMenuItem>
                   </>
@@ -193,6 +201,18 @@ export function UsersPage() {
       <p className="text-muted-foreground text-sm">There is no public sign-up. Members can add recipes and edit their own; admins can edit everything and manage accounts.</p>
       <CreateUserDialog open={creating} onOpenChange={setCreating} />
       <ResetPasswordDialog user={resetting} onClose={() => setResetting(null)} />
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete the account of {deleting?.display_name}?</AlertDialogTitle>
+            <AlertDialogDescription>They can no longer log in. Their recipes stay.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleting && remove.mutate(deleting.id)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageFrame>
   );
 }
