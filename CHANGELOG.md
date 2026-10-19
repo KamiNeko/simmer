@@ -2,6 +2,16 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.2.0 (2026-10-19)
+
+### Import
+
+- **Save to Simmer bookmark** for recipe sites that block Simmer from downloading their pages, such as sites behind Cloudflare's browser check. Drag the button on the import page to the bookmarks bar, then click the bookmark on a recipe page: Simmer opens with the recipe in the review editor, read from the page's recipe data without AI.
+- **From text** also accepts a recipe page's source (Ctrl+U, then copy everything) and reads the recipe data in it, without needing an AI provider.
+- When a site refuses a link import, the error explains that the site blocked Simmer and points to the bookmark, From text and From photos, instead of showing a bare error code.
+- Link imports send the headers a browser would, which gets past simpler bot filters.
+- Signing in keeps the full address you were going to, so the bookmark still works when you weren't signed in.
+
 ## 0.1.0 (2026-10-19)
 
 The first release.
