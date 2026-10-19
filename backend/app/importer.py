@@ -40,8 +40,8 @@ HEADERS = {
 BLOCKED_STATUSES = {401, 403, 429}
 BLOCKED_MESSAGE = (
     "The site blocked Simmer from downloading the page (error {status}). Some recipe sites "
-    "only allow browsers. Copy the recipe from the page and import it From text, or take "
-    "screenshots and import it From photos."
+    "only allow browsers. Open the recipe in your browser and use the Save to Simmer "
+    "bookmark, or import it From text or From photos."
 )
 
 
@@ -348,7 +348,7 @@ def draft_from_page(page: PageData) -> RecipeIn | None:
     return RecipeIn(
         title=(_clean_text(recipe.get("name")) or page.title or "Imported recipe")[:200],
         description=_clean_text(recipe.get("description")),
-        source_url=page.url,
+        source_url=page.url or None,
         servings=parse_servings(recipe.get("recipeYield")),
         prep_minutes=parse_duration(recipe.get("prepTime")),
         cook_minutes=parse_duration(recipe.get("cookTime")),

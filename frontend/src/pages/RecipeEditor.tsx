@@ -193,7 +193,7 @@ export function RecipeEditor() {
               providers={providers.data!}
               value={retryProvider}
               onChange={setRetryProvider}
-              allowNone={!!importInfo.request.url}
+              allowNone={!!(importInfo.request.url || importInfo.request.html)}
               className="h-8 w-60"
             />
             <Button type="button" variant="outline" size="sm" onClick={() => reimport.mutate(retryProvider)} disabled={reimport.isPending}>
@@ -325,7 +325,7 @@ export function RecipeEditor() {
 
 function ImportBanner({ info }: { info: ImportState }) {
   const { result, request } = info;
-  let site = request.photos ? `your ${request.photos.length === 1 ? "photo" : "photos"}` : "the pasted text";
+  let site = request.photos ? `your ${request.photos.length === 1 ? "photo" : "photos"}` : request.html ? "the pasted page" : "the pasted text";
   if (request.url) {
     try {
       site = new URL(request.url).hostname.replace(/^www\./, "");

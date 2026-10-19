@@ -181,7 +181,7 @@ def test_blocked_sites_suggest_text_or_photo_import(monkeypatch):
     monkeypatch.setattr(
         importer.httpx, "Client", lambda **kw: client(transport=httpx.MockTransport(answer), **kw)
     )
-    with pytest.raises(importer.FetchError, match=r"error 403.*From text.*From photos"):
+    with pytest.raises(importer.FetchError, match=r"error 403.*bookmark.*From text"):
         importer.fetch("https://recipes.example/beans/")
     assert "Simmer" not in seen["user-agent"]
     assert seen["accept"].startswith("text/html")
@@ -274,6 +274,24 @@ def test_url_import_without_ai_uses_page_data(admin, page):
 
     # The draft saves as is.
     assert admin.post("/api/recipes", json=recipe).status_code == 201
+
+
+def test_page_from_the_browser_is_read_without_downloading(admin, monkeypatch):
+    def blocked(url, max_bytes=0):
+        raise importer.FetchError("blocked")
+
+    monkeypatch.setattr(importer, "fetch", blocked)
+    html = PAGE.decode()
+    result = admin.post("/api/import", json={"html": html, "url": URL}).json()
+    recipe = result["recipe"]
+    assert recipe["source_url"] == URL
+    assert [g["name"] for g in recipe["groups"]] == ["", "Marinade", "Sauce"]
+    assert result["image_url"] == "https://example.com/images/chicken.jpg"
+
+    # Pasted page source has no address.
+    result = admin.post("/api/import", json={"html": html}).json()
+    assert result["recipe"]["source_url"] is None
+    assert admin.post("/api/recipes", json=result["recipe"]).status_code == 201
 
 
 def test_url_import_with_ai(admin, page, fake):

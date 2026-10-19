@@ -267,8 +267,11 @@ class ProviderUpdate(BaseModel):
 
 
 class ImportIn(BaseModel):
+    # With html, the address the page came from; without, the page to download.
     url: HttpUrl | None = None
     text: str | None = Field(default=None, max_length=60_000)
+    # A page the browser already loaded, for sites that block Simmer's own download.
+    html: str | None = Field(default=None, max_length=1_500_000)
     # A provider kind, "none" to skip AI, or empty for the default provider.
     provider: str | None = None
 

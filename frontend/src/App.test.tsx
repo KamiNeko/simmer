@@ -187,6 +187,46 @@ describe("import page without AI", () => {
   });
 });
 
+function importBody(api: ReturnType<typeof fakeApi>) {
+  const call = api.mock.calls.find(([url, init]) => init?.method === "POST" && String(url).endsWith("/api/import"));
+  return call && JSON.parse(String(call[1]!.body));
+}
+
+describe("importing pages from the browser", () => {
+  const PAGE = `<!doctype html><html><head><title>Beans</title><script type="application/ld+json">{"@type":"Recipe","name":"Beans"}</script></head><body><article>Fry the beans</article></body></html>`;
+  const imported = { recipe: { title: "Beans", groups: [], steps: [], tags: [] }, image_url: null, provider: null, model: null, warning: null };
+
+  it("reads pasted page source without AI", async () => {
+    const api = fakeApi({ "GET /api/ai/providers": [], "POST /api/import": imported });
+    renderApp("/import");
+    await userEvent.click(await screen.findByRole("button", { name: /from text/i }));
+    await userEvent.click(screen.getByLabelText("Recipe text"));
+    await userEvent.paste(PAGE);
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await vi.waitFor(() => expect(importBody(api)).toBeDefined());
+    const body = importBody(api);
+    expect(body.text).toBeUndefined();
+    expect(body.html).toContain('"name":"Beans"');
+    expect(body.provider).toBe("none");
+  });
+
+  it("imports the page the Save to Simmer bookmark sends", async () => {
+    Object.defineProperty(window, "opener", { value: window, configurable: true });
+    try {
+      const api = fakeApi({ "GET /api/ai/providers": [], "POST /api/import": imported });
+      renderApp("/import?from=browser");
+      expect(await screen.findByText(/reading the recipe from your browser tab/i)).toBeInTheDocument();
+      // The page listens once it knows which AI providers there are.
+      await screen.findByText(/links are imported from the page's recipe data/);
+      window.dispatchEvent(new MessageEvent("message", { data: { type: "simmer-page", url: "https://beans.example/", html: PAGE }, source: window }));
+      await vi.waitFor(() => expect(lastNavigation()).toBe("PUSH /new"));
+      expect(importBody(api)).toMatchObject({ url: "https://beans.example/", provider: "none" });
+    } finally {
+      Object.defineProperty(window, "opener", { value: null, configurable: true });
+    }
+  });
+});
+
 describe("users page", () => {
   it("asks in a dialog before deleting an account", async () => {
     const sam = { ...USER, id: 2, username: "sam", display_name: "Sam", role: "member" };

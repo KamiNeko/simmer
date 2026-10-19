@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Camera, FileText, ImagePlus, Link2, Loader2, Sparkles, X } from "lucide-react";
+import { Bookmark, Camera, FileText, ImagePlus, Link2, Loader2, Sparkles, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type AIProvider, api, type ImportRequest } from "@/lib/api";
+import { bookmarklet, isBrowserPage, looksLikeHtml, READY, reducePage } from "@/lib/browserImport";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -109,9 +110,35 @@ export function ProviderSelect({
 
 export const providerParam = (value: string) => (value === DEFAULT ? undefined : value);
 
+/** The Save to Simmer bookmark, to drag to the bookmarks bar. */
+function BookmarkletButton() {
+  const link = useRef<HTMLAnchorElement>(null);
+  // React refuses javascript: links, so the bookmark's script replaces the href after rendering.
+  useEffect(() => link.current?.setAttribute("href", bookmarklet(window.location.origin)), []);
+  return (
+    <div className="bg-muted/50 space-y-2 rounded-lg border p-3 text-sm">
+      <p className="text-muted-foreground">
+        Some sites block Simmer from downloading their pages. For those, drag this button to your browser's bookmarks bar, then
+        click the bookmark on the recipe page.
+      </p>
+      <a
+        ref={link}
+        href="/import"
+        title="Drag me to your bookmarks bar"
+        className="bg-background hover:border-primary/60 inline-flex cursor-grab items-center gap-2 rounded-md border px-3 py-1.5 font-medium [&_svg]:size-4"
+      >
+        <Bookmark /> Save to Simmer
+      </a>
+    </div>
+  );
+}
+
 export function ImportPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const fromBrowser = params.get("from") === "browser";
+  const [waiting, setWaiting] = useState(fromBrowser);
   const providers = useQuery({ queryKey: ["ai-providers"], queryFn: api.aiProviders });
   const [mode, setMode] = useState<Mode>("url");
   const [photos, setPhotos] = useState<File[]>([]);
@@ -120,8 +147,11 @@ export function ImportPage() {
   const [provider, setProvider] = useState(DEFAULT);
 
   const hasAI = (providers.data?.length ?? 0) > 0;
+  // Pasted page source is read like a link, from the page's recipe data.
+  const pageSource = mode === "text" && looksLikeHtml(text);
+  const pageData = mode === "url" || pageSource;
   // Text and photos always need the AI, so "without AI" falls back to the default there.
-  const choice = !hasAI ? "none" : mode !== "url" && provider === "none" ? DEFAULT : provider;
+  const choice = !hasAI ? "none" : !pageData && provider === "none" ? DEFAULT : provider;
 
   const run = useMutation({
     meta: { inlineError: true },
@@ -129,9 +159,26 @@ export function ImportPage() {
     onSuccess: (state: ImportState) => navigate("/new", { state: { imported: state } }),
   });
 
+  // Opened by the Save to Simmer bookmark: ask the recipe tab for its page and import it.
+  const { mutate } = run;
+  useEffect(() => {
+    const opener = window.opener as Window | null;
+    if (!fromBrowser || !providers.isSuccess || !opener) return;
+    const receive = (e: MessageEvent) => {
+      if (e.source !== opener || !isBrowserPage(e.data)) return;
+      window.removeEventListener("message", receive);
+      setWaiting(false);
+      mutate({ html: reducePage(e.data.html), url: e.data.url, provider: providers.data.length ? undefined : "none" });
+    };
+    window.addEventListener("message", receive);
+    opener.postMessage(READY, "*");
+    return () => window.removeEventListener("message", receive);
+  }, [fromBrowser, providers.isSuccess, providers.data, mutate]);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const source = mode === "url" ? { url: url.trim() } : mode === "text" ? { text } : { photos };
+    const source =
+      mode === "url" ? { url: url.trim() } : pageSource ? { html: reducePage(text) } : mode === "text" ? { text } : { photos };
     const request: ImportRequest = { ...source, provider: providerParam(choice) };
     run.mutate(request);
   };
@@ -155,6 +202,17 @@ export function ImportPage() {
         title="Import a recipe"
         description="Simmer reads the recipe, sorts the ingredients into groups and shows it to you in the editor before anything is saved."
       >
+        {fromBrowser && (waiting || run.isPending) && (
+          <p className="border-primary/30 bg-primary/10 mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm">
+            {window.opener ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Reading the recipe from your browser tab…
+              </>
+            ) : (
+              "Open a recipe in your browser and click the Save to Simmer bookmark there."
+            )}
+          </p>
+        )}
         <form onSubmit={submit} className="space-y-4">
           <div className="bg-muted inline-flex gap-1 rounded-lg p-1">
             {tab("url", <Link2 />, "From a link")}
@@ -184,6 +242,7 @@ export function ImportPage() {
                 placeholder="https://…"
                 autoFocus
               />
+              <BookmarkletButton />
             </div>
           ) : (
             <div className="space-y-2">
@@ -197,8 +256,16 @@ export function ImportPage() {
                 placeholder="Paste the whole recipe: title, ingredients and steps."
                 autoFocus
               />
-              {!hasAI && providers.isSuccess && (
-                <p className="text-muted-foreground text-xs">Importing text needs an AI provider. An admin can add one in AI providers.</p>
+              {pageSource ? (
+                <p className="text-muted-foreground text-xs">This is a page's source, so Simmer reads the recipe data in it, like with a link.</p>
+              ) : !hasAI && providers.isSuccess ? (
+                <p className="text-muted-foreground text-xs">
+                  Importing text needs an AI provider. An admin can add one in AI providers. Pasting a recipe page's source works without AI.
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  You can also paste a recipe page's source (Ctrl+U on the page, then copy everything). Simmer then reads the page's recipe data.
+                </p>
               )}
             </div>
           )}
@@ -207,19 +274,19 @@ export function ImportPage() {
             {hasAI ? (
               <div className="space-y-2">
                 <Label>AI provider</Label>
-                <ProviderSelect providers={providers.data!} value={choice} onChange={setProvider} allowNone={mode === "url"} className="w-64" />
+                <ProviderSelect providers={providers.data!} value={choice} onChange={setProvider} allowNone={pageData} className="w-64" />
               </div>
             ) : (
               // Text and photos have their own note: they can't be imported at all without AI.
               providers.isSuccess &&
-              mode === "url" && (
+              pageData && (
                 <p className="text-muted-foreground max-w-md text-xs">
                   No AI provider is set up, so links are imported from the page's recipe data as is.
                   {user?.role === "admin" && " You can add one under AI providers."}
                 </p>
               )
             )}
-            <Button type="submit" className="ml-auto" disabled={run.isPending || (mode !== "url" && !hasAI) || (mode === "photo" && !photos.length)}>
+            <Button type="submit" className="ml-auto" disabled={run.isPending || (!pageData && !hasAI) || (mode === "photo" && !photos.length)}>
               {run.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
               {run.isPending ? "Reading the recipe…" : "Import"}
             </Button>
