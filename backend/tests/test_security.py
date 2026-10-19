@@ -262,4 +262,12 @@ def test_login_throttle_forgets_old_failures():
         while len(times) > 1:
             times.pop()
     limiter.failed("someone", "10.0.0.2")
-    assert set(limiter.failures) == {"u:someone", "a:10.0.0.2"}
+    assert set(limiter.failures) == {"u:someone|10.0.0.2", "a:10.0.0.2"}
+
+
+def test_guessing_from_one_address_does_not_lock_the_account_elsewhere():
+    limiter = LoginThrottle()
+    for _ in range(LoginThrottle.PER_ACCOUNT):
+        limiter.failed("alex", "203.0.113.9")
+    assert limiter.retry_after("alex", "203.0.113.9") > 0
+    assert limiter.retry_after("alex", "192.168.1.20") == 0

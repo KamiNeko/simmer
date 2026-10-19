@@ -46,7 +46,7 @@ Set these in `.env` next to `docker-compose.yml`.
 | `SIMMER_SESSION_DAYS` | `30` | How many days a login lasts. |
 | `SIMMER_DATA_DIR` | `/data` in Docker, `./data` otherwise | Where the database, photos and `secret.key` live. |
 | `SIMMER_STATIC_DIR` | `/app/static` in Docker, unset otherwise | The built frontend. Unset means the backend serves only the API, which is what development uses. |
-| `FORWARDED_ALLOW_IPS` | `*` in Docker | Read by Uvicorn: the proxies trusted to set `X-Forwarded-For` and `X-Forwarded-Proto`. Use your proxy's IP, or keep `*` when port 8080 is bound to localhost. |
+| `FORWARDED_ALLOW_IPS` | private network addresses in Docker | Read by Uvicorn: the proxies trusted to set `X-Forwarded-For` and `X-Forwarded-Proto`. Set it to your proxy's IP to be stricter. |
 
 `SIMMER_STATIC_DIR` and `FORWARDED_ALLOW_IPS` are set in the Dockerfile. You rarely need to change the first one.
 

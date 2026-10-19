@@ -100,3 +100,47 @@ def test_full_backup_is_admin_only(admin, tmp_path):
     login(admin, "sam", "member-pass")
     assert admin.get("/api/admin/backup").status_code == 403
     assert admin.get("/api/export").status_code == 200
+
+
+def _import(client, recipes, photos=None):
+    document = {"format": "simmer-recipes", "version": 1, "recipes": recipes}
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as out:
+        out.writestr("recipes.json", json.dumps(document))
+        for name, data in (photos or {}).items():
+            out.writestr(name, data)
+    files = {"file": ("export.zip", buffer.getvalue(), "application/zip")}
+    return client.post("/api/import/file", files=files)
+
+
+def test_import_keeps_same_named_recipes_and_their_dates(admin):
+    recipes = [
+        {**SAMPLE_RECIPE, "title": "Soup", "created_at": "2024-03-01T12:00:00+00:00"},
+        {**SAMPLE_RECIPE, "title": "Soup"},
+    ]
+    result = _import(admin, recipes).json()
+    assert [r["slug"] for r in result["imported"]] == ["soup", "soup-2"]
+    assert admin.get("/api/recipes/soup").json()["created_at"].startswith("2024-03-01")
+
+
+def test_import_limits_the_work_a_small_zip_can_cause(admin):
+    big = io.BytesIO()
+    Image.new("RGB", (4000, 4000), "white").save(big, "PNG")
+    small = _jpeg()
+    recipes = [
+        {**SAMPLE_RECIPE, "title": "Huge photo", "photo": "photos/big.png"},
+        {**SAMPLE_RECIPE, "title": "First", "photo": "photos/small.jpg"},
+        {**SAMPLE_RECIPE, "title": "Same photo again", "photo": "photos/small.jpg"},
+    ]
+    photos = {"photos/big.png": big.getvalue(), "photos/small.jpg": small}
+    assert len(_import(admin, recipes, photos).json()["imported"]) == 3
+    has_photo = {r["title"]: bool(r["photo_url"]) for r in admin.get("/api/recipes").json()}
+    assert has_photo == {"Huge photo": False, "First": True, "Same photo again": False}
+
+    too_many = [{"title": "R"}] * 5001
+    response = _import(admin, too_many)
+    assert response.status_code == 422 and "more than 5000" in response.json()["detail"]
+
+    nested = b'{"format": "simmer-recipes", "recipes": ' + b"[" * 100_000 + b"]" * 100_000 + b"}"
+    files = {"file": ("x.json", nested, "application/json")}
+    assert admin.post("/api/import/file", files=files).status_code == 422
