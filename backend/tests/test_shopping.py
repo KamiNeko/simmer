@@ -1,3 +1,7 @@
+from sqlalchemy import event
+
+from app.db import get_engine
+
 from .conftest import SAMPLE_RECIPE, login
 
 
@@ -66,3 +70,30 @@ def test_deleting_a_recipe_removes_it_from_lists(admin):
     admin.put(f"/api/shopping/recipes/{slug}", json={"servings": 2})
     admin.delete(f"/api/recipes/{slug}")
     assert admin.get("/api/shopping").json()["recipes"] == []
+
+
+def test_shopping_list_queries_are_batched(admin):
+    """The number of queries doesn't grow with the number of recipes on the list."""
+
+    def statements_for_list() -> list[str]:
+        statements: list[str] = []
+
+        def count(conn, cursor, statement, *args):
+            statements.append(statement)
+
+        engine = get_engine()
+        event.listen(engine, "before_cursor_execute", count)
+        try:
+            admin.get("/api/shopping").raise_for_status()
+        finally:
+            event.remove(engine, "before_cursor_execute", count)
+        return statements
+
+    admin.post("/api/shopping/extras", json={"text": "Eggs"})
+    admin.put(f"/api/shopping/recipes/{_recipe(admin, 'Recipe 0')}", json={"servings": 2})
+    one = statements_for_list()
+    for n in range(1, 8):
+        admin.put(f"/api/shopping/recipes/{_recipe(admin, f'Recipe {n}')}", json={"servings": 2})
+    eight = statements_for_list()
+    assert len(admin.get("/api/shopping").json()["recipes"]) == 8
+    assert len(eight) == len(one), "\n".join(eight)

@@ -4,6 +4,7 @@ import socket
 import threading
 import zipfile
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -189,3 +190,62 @@ def test_direct_private_addresses_are_refused():
     for url in ("http://127.0.0.1:1/", "http://[::ffff:127.0.0.1]:1/", "http://10.0.0.1/"):
         with pytest.raises(importer.FetchError, match="local or private"):
             importer.fetch(url)
+
+
+@pytest.fixture
+def web(monkeypatch):
+    """Serve fetches from a handler; *.example names resolve to a public address."""
+    for name in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY"):
+        monkeypatch.delenv(name, raising=False)
+    real = socket.getaddrinfo
+
+    def resolve(host, *args, **kwargs):
+        if host.endswith(".example"):
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.215.14", 80))]
+        return real(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+
+    real_client = httpx.Client
+
+    def serve(handler):
+        class Client(real_client):
+            def __init__(self, **kwargs):
+                super().__init__(transport=httpx.MockTransport(handler), **kwargs)
+
+        monkeypatch.setattr(importer.httpx, "Client", Client)
+
+    return serve
+
+
+def test_redirect_to_a_private_address_is_refused(web):
+    web(lambda request: httpx.Response(302, headers={"Location": "http://127.0.0.1/admin"}))
+    with pytest.raises(importer.FetchError, match="local or private"):
+        importer.fetch("http://site.example/recipe")
+
+
+def test_fetch_errors(web):
+    web(lambda request: httpx.Response(404))
+    with pytest.raises(importer.FetchError, match="error 404"):
+        importer.fetch("http://site.example/gone")
+
+    web(lambda request: httpx.Response(200, content=b"x" * 2000))
+    with pytest.raises(importer.FetchError, match="too large"):
+        importer.fetch("http://site.example/huge", max_bytes=1000)
+
+
+def test_fetch_follows_redirects(web):
+    def handler(request):
+        if request.url.path == "/old":
+            return httpx.Response(301, headers={"Location": "/recipe"})
+        return httpx.Response(
+            200, content=b"<html>Soup</html>", headers={"Content-Type": "text/html"}
+        )
+
+    web(handler)
+    body, url, content_type = importer.fetch("http://site.example/old")
+    assert (body, url, content_type) == (
+        b"<html>Soup</html>",
+        "http://site.example/recipe",
+        "text/html",
+    )

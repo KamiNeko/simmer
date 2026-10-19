@@ -45,3 +45,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "RUF"]
 [tool.coverage.run]
 source = ["app"]
 branch = true
+
+[tool.coverage.report]
+# CI fails if coverage drops below this; raise it as tests are added.
+fail_under = 90
