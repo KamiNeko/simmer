@@ -64,7 +64,17 @@ class AuthState(BaseModel):
 # Recipes
 
 
+def _field(item: object, name: str) -> object:
+    return item.get(name) if isinstance(item, dict) else getattr(item, name, None)
+
+
+def _blank(value: object) -> bool:
+    return isinstance(value, str) and not value.strip()
+
+
 class IngredientIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     quantity: float | None = Field(default=None, ge=0)
     quantity_max: float | None = Field(default=None, ge=0)
     unit: str | None = Field(default=None, max_length=32)
@@ -79,8 +89,20 @@ class IngredientOut(IngredientIn, ORMModel):
 
 
 class GroupIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(default="", max_length=120)
     ingredients: list[IngredientIn] = Field(default=[], max_length=200)
+
+    @field_validator("ingredients", mode="before")
+    @classmethod
+    def _drop_empty_ingredients(cls, items: object) -> object:
+        """Leave out rows with neither a name nor an amount, such as a blank last row."""
+        if not isinstance(items, list):
+            return items
+        return [
+            i for i in items if not (_blank(_field(i, "name")) and _field(i, "quantity") is None)
+        ]
 
 
 class GroupOut(ORMModel):
@@ -90,12 +112,16 @@ class GroupOut(ORMModel):
 
 
 class StepIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     section: str = Field(default="", max_length=120)
     text: str = Field(min_length=1, max_length=10_000)
 
 
 class StepOut(StepIn, ORMModel):
     id: int
+    # No length check on the way out, so a blank step saved by an older version still loads.
+    text: str
 
 
 class AuthorOut(ORMModel):
@@ -104,6 +130,8 @@ class AuthorOut(ORMModel):
 
 
 class RecipeIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=20_000)
     source_url: HttpUrl | None = None
@@ -124,6 +152,13 @@ class RecipeIn(BaseModel):
             if cleaned and cleaned.lower() not in seen:
                 seen[cleaned.lower()] = cleaned
         return list(seen.values())
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def _drop_empty_steps(cls, steps: object) -> object:
+        if not isinstance(steps, list):
+            return steps
+        return [s for s in steps if not _blank(_field(s, "text"))]
 
 
 class RecipeSummary(ORMModel):
