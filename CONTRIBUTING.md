@@ -64,6 +64,30 @@ Every change in behaviour comes with a test.
 - **Frontend** tests sit next to the code as `*.test.ts` or `*.test.tsx` and run with Vitest, jsdom and Testing Library. `src/test/fakeApi.ts` has sample data and a fake API.
 - A bug fix starts with a test that fails without the fix.
 
+## Adding a database migration
+
+After changing `backend/app/models.py`, generate a migration. There is no `alembic.ini`, so call Alembic from Python. Give it the next revision id after the newest file in `backend/app/alembic/versions` (they are named `000N_name.py`):
+
+```sh
+cd backend
+.venv/bin/python -c "from alembic import command; from app.db import get_engine; from app.migrations import alembic_config, upgrade_database; e = get_engine(); upgrade_database(e); command.revision(alembic_config(e), message='describe change', autogenerate=True, rev_id='0007')"
+.venv/bin/ruff check --fix app/alembic && .venv/bin/ruff format app/alembic
+```
+
+This first brings your local `./data/simmer.db` up to date, then compares it with the models and writes `0007_describe_change.py`. Ruff then tidies the generated imports and quotes. Read the result before you commit it. The full-text search table (`recipe_search`, FTS5) is excluded from autogenerate, so changes to it are written by hand with `op.execute`. `tests/test_migrations.py` fails if the models and migrations disagree.
+
+## Screenshots
+
+The README screenshots come from a script that fills an empty Simmer with a demo household and photographs each screen. The dish "photos" are drawn as SVG in `frontend/scripts/dishes.mjs`, so the repository needs no stock images. After a UI change, refresh them:
+
+```sh
+cd frontend && npm run build
+cd ../backend && SIMMER_DATA_DIR=$(mktemp -d) SIMMER_STATIC_DIR=../frontend/dist .venv/bin/uvicorn app.main:app --port 8080
+cd ../frontend && npm run screenshots     # in a second terminal; writes docs/images/*.png
+```
+
+The script refuses to run against a Simmer that already has accounts. The first time, install the browser it uses with `npx playwright install chromium`.
+
 ## Pull requests
 
 1. Fork the repository and create a branch from `main`.
