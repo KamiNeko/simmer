@@ -22,9 +22,26 @@ MAX_TEXT_CHARS = 40_000
 # Per read, and for the whole download, so a slow site can't hold a worker for long.
 READ_TIMEOUT = 20
 TOTAL_TIMEOUT = 60
-USER_AGENT = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/130.0 Safari/537.36 Simmer/1.0"
+# Recipe sites often sit behind bot protection that turns away anything that doesn't look
+# like a browser, so send the headers a browser would rather than announcing Simmer.
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/130.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,"
+        "image/apng,*/*;q=0.8"
+    ),
+    "Accept-Language": "en-US,en;q=0.9,de;q=0.8",
+    "Upgrade-Insecure-Requests": "1",
+}
+# Answers that mean the site refused an automated download rather than the page being missing.
+BLOCKED_STATUSES = {401, 403, 429}
+BLOCKED_MESSAGE = (
+    "The site blocked Simmer from downloading the page (error {status}). Some recipe sites "
+    "only allow browsers. Copy the recipe from the page and import it From text, or take "
+    "screenshots and import it From photos."
 )
 
 
@@ -82,11 +99,13 @@ def fetch(url: str, max_bytes: int = MAX_PAGE_BYTES) -> tuple[bytes, str, str]:
                 follow_redirects=True,
                 max_redirects=5,
                 timeout=READ_TIMEOUT,
-                headers={"User-Agent": USER_AGENT, "Accept-Language": "en,de;q=0.8"},
+                headers=HEADERS,
                 event_hooks={"request": [on_request], "response": [_check_peer]},
             ) as client,
             client.stream("GET", url) as response,
         ):
+            if response.status_code in BLOCKED_STATUSES:
+                raise FetchError(BLOCKED_MESSAGE.format(status=response.status_code))
             if response.status_code >= 400:
                 raise FetchError(f"The site answered with error {response.status_code}")
             chunks: list[bytes] = []

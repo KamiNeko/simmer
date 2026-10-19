@@ -2,6 +2,7 @@ import io
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 from PIL import Image
 from sqlalchemy import select
@@ -165,6 +166,25 @@ def test_private_addresses_are_refused(monkeypatch):
         importer.fetch("http://127.0.0.1:8080/")
     with pytest.raises(importer.FetchError, match="http and https"):
         importer.fetch("file:///etc/passwd")
+
+
+def test_blocked_sites_suggest_text_or_photo_import(monkeypatch):
+    seen = {}
+
+    def answer(request):
+        seen.update(request.headers)
+        return httpx.Response(403, text="Forbidden")
+
+    client = httpx.Client
+    monkeypatch.setattr(importer, "_check_public", lambda url: None)
+    monkeypatch.setattr(importer, "_check_peer", lambda response: None)
+    monkeypatch.setattr(
+        importer.httpx, "Client", lambda **kw: client(transport=httpx.MockTransport(answer), **kw)
+    )
+    with pytest.raises(importer.FetchError, match=r"error 403.*From text.*From photos"):
+        importer.fetch("https://recipes.example/beans/")
+    assert "Simmer" not in seen["user-agent"]
+    assert seen["accept"].startswith("text/html")
 
 
 def _all_objects(schema):
