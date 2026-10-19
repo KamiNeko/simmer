@@ -30,22 +30,26 @@ def _session(db: Session, token: str) -> UserSession | None:
 
 
 def session_is_valid(db: Session, token: str) -> bool:
+    """True if the cookie token belongs to an unexpired session."""
     return _session(db, token) is not None
 
 
 def current_user_optional(request: Request, db: DB) -> User | None:
+    """The signed-in user, or None for visitors."""
     token = request.cookies.get(SESSION_COOKIE)
     session = _session(db, token) if token else None
     return session.user if session else None
 
 
 def current_user(user: Annotated[User | None, Depends(current_user_optional)]) -> User:
+    """The signed-in user, or a 401 error."""
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Login required")
     return user
 
 
 def admin_user(user: Annotated[User, Depends(current_user)]) -> User:
+    """The signed-in admin, or a 403 error for members."""
     if not user.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
     return user

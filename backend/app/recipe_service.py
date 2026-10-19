@@ -22,12 +22,14 @@ RECIPE_LOAD = (
 
 
 def slugify(text: str) -> str:
+    """A URL-friendly version of a title."""
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
     return text[:120] or "recipe"
 
 
 def unique_slug(db: Session, title: str, exclude_id: int | None = None) -> str:
+    """A slug for the title that no other recipe uses."""
     base = slugify(title)
     slug, n = base, 2
     while True:
@@ -40,6 +42,7 @@ def unique_slug(db: Session, title: str, exclude_id: int | None = None) -> str:
 
 
 def can_edit(user: User | None, recipe: Recipe) -> bool:
+    """True if the user is an admin or wrote the recipe."""
     return user is not None and (user.is_admin or recipe.author_id == user.id)
 
 
@@ -62,6 +65,7 @@ def _fields(recipe: Recipe, user: User | None, stats: RecipeStats) -> dict:
 
 
 def recipe_summary(recipe: Recipe, user: User | None, stats: RecipeStats) -> RecipeSummary:
+    """A recipe as a list entry, with its stats."""
     base = {k: getattr(recipe, k) for k in RecipeSummary.model_fields if hasattr(recipe, k)}
     return RecipeSummary.model_validate({**base, **_fields(recipe, user, stats)})
 
@@ -72,6 +76,7 @@ def _detail(recipe: Recipe, user: User | None, stats: RecipeStats) -> RecipeOut:
 
 
 def recipe_detail(db: Session, recipe: Recipe, user: User | None) -> RecipeOut:
+    """A recipe with everything the detail page shows."""
     return _detail(recipe, user, stats_for(db, [recipe.id], user)[recipe.id])
 
 
@@ -82,6 +87,7 @@ def recipe_details(db: Session, recipes: list[Recipe], user: User | None) -> lis
 
 
 def get_recipe_by_slug(db: Session, slug: str) -> Recipe:
+    """The recipe with this slug, or a 404 error."""
     recipe = db.scalar(select(Recipe).where(Recipe.slug == slug).options(*RECIPE_LOAD))
     if recipe is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Recipe not found")

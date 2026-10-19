@@ -39,6 +39,7 @@ def bootstrap_admin(db: Session) -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    """Run migrations and create the admin from the environment on start."""
     upgrade_database(get_engine())
     db = next(get_db())
     try:
@@ -68,6 +69,7 @@ app.include_router(backup.router)
 
 @app.get("/media/photos/{name}", include_in_schema=False)
 def photo(name: str) -> FileResponse:
+    """Serve a stored recipe photo or thumbnail."""
     if not re.fullmatch(r"\d+-[0-9a-f]+(-thumb)?\.webp", name):
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     path = photos.photos_dir() / name
@@ -79,6 +81,7 @@ def photo(name: str) -> FileResponse:
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
+    """A simple check that the server is up, used by the Docker health check."""
     return {"status": "ok"}
 
 
@@ -120,6 +123,7 @@ def _recipe_meta(slug: str) -> str:
 
 
 def mount_frontend(static_dir: Path) -> None:
+    """Serve the built frontend, with link preview tags on recipe pages."""
     index_file = static_dir / "index.html"
     assets = static_dir / "assets"
     if assets.is_dir():

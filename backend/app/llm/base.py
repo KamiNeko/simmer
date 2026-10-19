@@ -42,6 +42,7 @@ class ProviderConfig:
 
 
 def build_provider(config: ProviderConfig) -> Provider:
+    """The provider adapter for a stored configuration."""
     if config.kind == "anthropic":
         from .anthropic_provider import AnthropicProvider
 

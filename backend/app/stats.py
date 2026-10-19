@@ -20,6 +20,7 @@ class RecipeStats:
 
 
 def stats_for(db: Session, recipe_ids: list[int], user: User | None) -> dict[int, RecipeStats]:
+    """Ratings and cook counts for several recipes, overall and for this user."""
     stats = {rid: RecipeStats() for rid in recipe_ids}
     if not recipe_ids:
         return stats

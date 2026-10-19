@@ -33,10 +33,12 @@ def _fernet() -> Fernet:
 
 
 def encrypt(value: str) -> str:
+    """Encrypt a secret for storage in the database."""
     return _fernet().encrypt(value.encode()).decode()
 
 
 def decrypt(token: str) -> str:
+    """Decrypt a stored secret, or raise DecryptionError if the key changed."""
     try:
         return _fernet().decrypt(token.encode()).decode()
     except InvalidToken as exc:

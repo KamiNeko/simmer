@@ -57,11 +57,13 @@ def _journal(db: DB, recipe: Recipe, user: User) -> Journal:
 
 @router.get("/recipes/{slug}/journal", response_model=Journal)
 def get_journal(slug: str, user: CurrentUser, db: DB) -> Journal:
+    """The user's rating, cook log and notes for a recipe."""
     return _journal(db, _recipe(db, slug), user)
 
 
 @router.put("/recipes/{slug}/rating", response_model=Journal)
 def rate(slug: str, data: RatingIn, user: CurrentUser, db: DB) -> Journal:
+    """Set the user's star rating for a recipe."""
     recipe = _recipe(db, slug)
     rating = db.scalar(
         select(Rating).where(Rating.user_id == user.id, Rating.recipe_id == recipe.id)
@@ -76,6 +78,7 @@ def rate(slug: str, data: RatingIn, user: CurrentUser, db: DB) -> Journal:
 
 @router.delete("/recipes/{slug}/rating", response_model=Journal)
 def unrate(slug: str, user: CurrentUser, db: DB) -> Journal:
+    """Remove the user's rating for a recipe."""
     recipe = _recipe(db, slug)
     rating = db.scalar(
         select(Rating).where(Rating.user_id == user.id, Rating.recipe_id == recipe.id)
@@ -105,6 +108,7 @@ def cooked(slug: str, data: CookIn, user: CurrentUser, db: DB) -> Journal:
 
 @router.delete("/cooked/{cook_id}", status_code=status.HTTP_204_NO_CONTENT)
 def undo_cooked(cook_id: int, user: CurrentUser, db: DB) -> None:
+    """Remove one of the user's cook log entries."""
     cook = db.get(CookLog, cook_id)
     if cook is None or cook.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entry not found")
@@ -114,6 +118,7 @@ def undo_cooked(cook_id: int, user: CurrentUser, db: DB) -> None:
 
 @router.post("/recipes/{slug}/comments", response_model=CommentOut, status_code=201)
 def add_comment(slug: str, data: CommentIn, user: CurrentUser, db: DB) -> CommentOut:
+    """Add a private note to a recipe."""
     recipe = _recipe(db, slug)
     comment = Comment(user_id=user.id, recipe_id=recipe.id, text=data.text.strip())
     db.add(comment)
@@ -130,6 +135,7 @@ def _own_comment(db: DB, comment_id: int, user: User) -> Comment:
 
 @router.patch("/comments/{comment_id}", response_model=CommentOut)
 def update_comment(comment_id: int, data: CommentUpdate, user: CurrentUser, db: DB) -> CommentOut:
+    """Change a note's text or tick it off."""
     comment = _own_comment(db, comment_id, user)
     if data.text is not None:
         comment.text = data.text.strip()
@@ -141,5 +147,6 @@ def update_comment(comment_id: int, data: CommentUpdate, user: CurrentUser, db: 
 
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment(comment_id: int, user: CurrentUser, db: DB) -> None:
+    """Delete one of the user's notes."""
     db.delete(_own_comment(db, comment_id, user))
     db.commit()

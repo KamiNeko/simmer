@@ -74,6 +74,7 @@ def list_ready_providers(_: CurrentUser, db: DB) -> list[ProviderOut]:
 
 @router.get("/admin/ai/providers", response_model=list[ProviderOut])
 def list_providers(_: AdminUser, db: DB) -> list[ProviderOut]:
+    """Every supported provider and whether it is set up, for the admin page."""
     rows = _configured(db)
     return [_out(kind, rows.get(kind)) for kind in KINDS]
 
@@ -86,6 +87,7 @@ def _kind(kind: str) -> str:
 
 @router.put("/admin/ai/providers/{kind}", response_model=ProviderOut)
 def save_provider(kind: str, data: ProviderUpdate, _: AdminUser, db: DB) -> ProviderOut:
+    """Set up or change a provider's key, model and default flag."""
     kind = _kind(kind)
     row = _configured(db).get(kind)
     if row is None:
@@ -110,6 +112,7 @@ def save_provider(kind: str, data: ProviderUpdate, _: AdminUser, db: DB) -> Prov
 
 @router.delete("/admin/ai/providers/{kind}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_provider(kind: str, _: AdminUser, db: DB) -> None:
+    """Remove a provider and its stored key."""
     row = _configured(db).get(_kind(kind))
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Provider isn't set up")
@@ -121,6 +124,7 @@ def delete_provider(kind: str, _: AdminUser, db: DB) -> None:
 
 @router.post("/admin/ai/providers/{kind}/test")
 def test_provider(kind: str, _: AdminUser, db: DB) -> dict[str, str]:
+    """Check that a provider's key and model work."""
     row = _configured(db).get(_kind(kind))
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Provider isn't set up")
@@ -224,6 +228,7 @@ def import_photo_draft(
 
 @router.post("/ai/tidy", response_model=RecipeIn)
 def tidy(data: TidyIn, _: CurrentUser, db: DB) -> RecipeIn:
+    """Split typed ingredient lines into fields and suggest groups."""
     provider = resolve_provider(db, data.provider)
     if provider is None:
         raise HTTPException(

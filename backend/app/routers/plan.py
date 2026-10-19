@@ -70,6 +70,7 @@ def get_plan(start: date, end: date, user: CurrentUser, db: DB) -> list[PlanEntr
 
 @router.post("", response_model=PlanEntryOut, status_code=status.HTTP_201_CREATED)
 def add_entry(data: PlanEntryIn, user: CurrentUser, db: DB) -> PlanEntryOut:
+    """Add a recipe or a note to a day of the plan."""
     note = data.note.strip()
     if not data.recipe and not note:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Pick a recipe or write a note")
@@ -95,6 +96,7 @@ def _entry(db: DB, entry_id: int) -> PlanEntry:
 
 @router.patch("/{entry_id}", response_model=PlanEntryOut)
 def update_entry(entry_id: int, data: PlanEntryUpdate, user: CurrentUser, db: DB) -> PlanEntryOut:
+    """Move an entry to another day or change its servings or note."""
     entry = _entry(db, entry_id)
     if data.day is not None:
         entry.day = data.day
@@ -111,6 +113,7 @@ def update_entry(entry_id: int, data: PlanEntryUpdate, user: CurrentUser, db: DB
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_entry(entry_id: int, user: CurrentUser, db: DB) -> None:
+    """Remove an entry from the plan."""
     db.delete(_entry(db, entry_id))
     db.commit()
 

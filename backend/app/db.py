@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
 
 
 def make_engine(url: str) -> Engine:
+    """An SQLite engine with foreign keys and WAL mode turned on."""
     engine = create_engine(url, connect_args={"check_same_thread": False})
 
     @event.listens_for(engine, "connect")
@@ -29,6 +30,7 @@ _session_factory: sessionmaker[Session] | None = None
 
 
 def init_engine(url: str | None = None) -> Engine:
+    """Create the shared engine and session factory, by default for the data directory."""
     global _engine, _session_factory
     settings = get_settings()
     if url is None:
@@ -40,6 +42,7 @@ def init_engine(url: str | None = None) -> Engine:
 
 
 def get_engine() -> Engine:
+    """The shared engine, created on first use."""
     if _engine is None:
         init_engine()
     assert _engine is not None
@@ -47,6 +50,7 @@ def get_engine() -> Engine:
 
 
 def get_db() -> Iterator[Session]:
+    """A database session for one request, closed afterwards."""
     if _session_factory is None:
         init_engine()
     assert _session_factory is not None

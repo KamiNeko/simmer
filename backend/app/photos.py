@@ -20,12 +20,14 @@ class InvalidImage(ValueError):
 
 
 def photos_dir() -> Path:
+    """The photo folder in the data directory, created if missing."""
     path = get_settings().data_dir / "photos"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def photo_urls(name: str | None) -> tuple[str | None, str | None]:
+    """The full-size and thumbnail URLs for a stored photo name."""
     if not name:
         return None, None
     return f"/media/photos/{name}.webp", f"/media/photos/{name}-thumb.webp"
@@ -65,6 +67,7 @@ def save_photo(data: bytes, recipe_id: int) -> str:
 
 
 def delete_photo(name: str | None) -> None:
+    """Remove a photo and its thumbnail, if there is one."""
     if not name:
         return
     folder = photos_dir()

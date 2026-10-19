@@ -20,6 +20,7 @@ from .db import Base
 
 
 def utcnow() -> datetime:
+    """The current time in UTC."""
     return datetime.now(UTC)
 
 
@@ -41,6 +42,7 @@ class User(Base):
 
     @property
     def is_admin(self) -> bool:
+        """True for admins."""
         return self.role == Role.admin
 
 

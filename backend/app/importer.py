@@ -141,6 +141,7 @@ def _find_recipe(data: Any) -> dict[str, Any] | None:
 
 
 def find_jsonld_recipe(soup: BeautifulSoup) -> dict[str, Any] | None:
+    """The first schema.org Recipe in the page's JSON-LD, if any."""
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text()
         if not raw:
@@ -203,6 +204,7 @@ def _image_url(recipe: dict[str, Any] | None, soup: BeautifulSoup, base: str) ->
 
 
 def page_text(soup: BeautifulSoup) -> str:
+    """The readable text of the page's main content, without menus and scripts."""
     for tag in soup(["script", "style", "noscript", "nav", "footer", "header", "aside", "form"]):
         tag.decompose()
     root = soup.find("article") or soup.find("main") or soup.body or soup
@@ -212,6 +214,7 @@ def page_text(soup: BeautifulSoup) -> str:
 
 
 def parse_page(body: bytes, url: str) -> PageData:
+    """Read the recipe data, ingredient headings, image and text from a page."""
     soup = BeautifulSoup(body, "html.parser")
     recipe = find_jsonld_recipe(soup)
     title_tag = soup.find("title")
@@ -245,6 +248,7 @@ def parse_duration(value: Any) -> int | None:
 
 
 def parse_servings(value: Any) -> float | None:
+    """The number of servings from a schema.org recipeYield value."""
     values = value if isinstance(value, list) else [value]
     for item in values:
         if isinstance(item, int | float) and item > 0:
