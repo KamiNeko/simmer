@@ -40,7 +40,12 @@ class GoogleProvider:
             if exc.code in (401, 403) or "API key" in str(exc):
                 raise LLMError("Google rejected the API key") from exc
             if exc.code == 404:
-                raise LLMError(f"Google doesn't know the model {self.model!r}") from exc
+                # Google also answers 404 for models it no longer offers to new keys,
+                # such as the Gemini 2.5 family.
+                raise LLMError(
+                    f"Google doesn't know the model {self.model!r} or doesn't offer it to this "
+                    "API key. Try a current model such as gemini-3.8-flash."
+                ) from exc
             raise LLMError(f"Google returned an error: {exc.message}") from exc
         except errors.APIError as exc:
             raise LLMError(f"Google returned an error: {exc.message}") from exc

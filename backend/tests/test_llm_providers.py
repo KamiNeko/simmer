@@ -121,7 +121,8 @@ CASES = [
     (
         "google",
         _google_error(google_errors.ClientError, 404, "models/nope is not found"),
-        "Google doesn't know the model 'test-model'",
+        "Google doesn't know the model 'test-model' or doesn't offer it to this API key. "
+        "Try a current model such as gemini-3.8-flash.",
     ),
     (
         "google",

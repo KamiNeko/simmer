@@ -206,7 +206,7 @@ def test_provider_settings_keep_the_key_secret(admin):
     admin.put("/api/admin/ai/providers/openai", json={"model": "gpt-5-mini"})
     admin.put(
         "/api/admin/ai/providers/google",
-        json={"api_key": "AIza-google-key", "model": "gemini-2.5-flash", "is_default": True},
+        json={"api_key": "AIza-google-key", "model": "gemini-3.8-flash", "is_default": True},
     )
     providers = {p["kind"]: p for p in admin.get("/api/admin/ai/providers").json()}
     assert providers["openai"]["model"] == "gpt-5-mini"

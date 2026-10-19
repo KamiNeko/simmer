@@ -5,7 +5,7 @@ from typing import Any, Protocol
 KINDS: dict[str, dict[str, str]] = {
     "anthropic": {"label": "Anthropic", "default_model": "claude-opus-5-5"},
     "openai": {"label": "OpenAI", "default_model": "gpt-5"},
-    "google": {"label": "Google Gemini", "default_model": "gemini-2.5-flash"},
+    "google": {"label": "Google Gemini", "default_model": "gemini-3.8-flash"},
 }
 
 # Recipes are long but the JSON stays well under this.

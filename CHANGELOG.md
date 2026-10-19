@@ -2,6 +2,12 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixes
+
+- The default Google Gemini model is now `gemini-3.8-flash`. Google no longer offers `gemini-2.5-flash` to new API keys, so testing a fresh Gemini key failed with "Google doesn't know the model". The error now says the model may not be offered to your key and suggests a current one.
+
 ## 0.1.0 (2026-10-19)
 
 The first release.

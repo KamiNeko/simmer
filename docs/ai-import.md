@@ -13,7 +13,7 @@ Only admins can do this.
    - OpenAI: https://platform.openai.com/api-keys
    - Google Gemini: https://aistudio.google.com/apikey
 2. In Simmer, open **AI providers** in the admin section of the sidebar.
-3. Paste the key, check the model name and save. The defaults are `claude-opus-5-5`, `gpt-5` and `gemini-2.5-flash`. Any model of that provider that supports images and structured JSON output should work.
+3. Paste the key, check the model name and save. The defaults are `claude-opus-5-5`, `gpt-5` and `gemini-3.8-flash`. Any model of that provider that supports images and structured JSON output should work.
 4. Press **Test connection**. It sends a tiny request and shows the provider's error if the key or model is wrong.
 5. If you set up more than one, pick the default. Members can switch provider on the import screen, and re-import a draft with another provider when a result looks wrong.
 
