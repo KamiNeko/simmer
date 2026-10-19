@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
+import { renamedSlugs } from "./lib/queries";
 import { createQueryClient } from "./lib/queryClient";
 import { fakeApi, recipe } from "./test/fakeApi";
 
@@ -29,7 +30,10 @@ function renderApp(path: string | string[], client = createQueryClient()) {
   );
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  renamedSlugs.clear();
+});
 
 describe("recipe editor", () => {
   it("starts empty when going from editing a recipe to a new one", async () => {
@@ -98,6 +102,47 @@ describe("recipe detail", () => {
   });
 });
 
+describe("history", () => {
+  it("goes back to the recipe after saving an edit, rather than adding it again", async () => {
+    const soup = recipe();
+    fakeApi({ "GET /api/recipes/soup": soup, "PUT /api/recipes/soup": () => ({ ...soup, description: "Hot" }) });
+    renderApp("/recipes/soup");
+    await userEvent.click(await screen.findByRole("link", { name: /edit/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /save/i }));
+    expect(await screen.findByText("Hot")).toBeInTheDocument();
+    expect(lastNavigation()).toBe("POP /recipes/soup");
+  });
+
+  it("follows a renamed recipe to its new address", async () => {
+    const soup = recipe();
+    const renamed = { ...soup, slug: "better-soup", title: "Better soup" };
+    fakeApi({ "GET /api/recipes/soup": soup, "PUT /api/recipes/soup": () => renamed, "GET /api/recipes/better-soup": renamed });
+    renderApp("/recipes/soup");
+    await userEvent.click(await screen.findByRole("link", { name: /edit/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /save/i }));
+    expect(await screen.findByRole("heading", { name: "Better soup", level: 1 })).toBeInTheDocument();
+    expect(lastNavigation()).toBe("REPLACE /recipes/better-soup");
+  });
+
+  it("goes back when cancelling an edit", async () => {
+    fakeApi({ "GET /api/recipes/soup": recipe() });
+    renderApp("/recipes/soup");
+    await userEvent.click(await screen.findByRole("link", { name: /edit/i }));
+    await userEvent.click(await screen.findByRole("link", { name: /cancel/i }));
+    expect(await screen.findByRole("heading", { name: "Soup", level: 1 })).toBeInTheDocument();
+    expect(lastNavigation()).toBe("POP /recipes/soup");
+  });
+
+  it("replaces a deleted recipe's page so Back can't return to it", async () => {
+    fakeApi({ "GET /api/recipes/soup": recipe(), "DELETE /api/recipes/soup": () => null });
+    renderApp(["/?tag=dinner", "/recipes/soup?tag=dinner"]);
+    await userEvent.click(await screen.findByRole("button", { name: "More actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /delete recipe/i }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(lastNavigation()).toBe("REPLACE /?tag=dinner"));
+  });
+});
+
 describe("cooking view", () => {
   const steps = [{ id: 1, section: "", text: "Stir" }];
 
@@ -155,7 +200,8 @@ describe("lists that show recipes", () => {
     client.setQueryData(["plan", "2026-10-19"], []);
     renderApp("/recipes/soup/edit", client);
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
-    await screen.findByText("Recipe saved");
+    // Earlier tests may have left the same toast up.
+    expect(await screen.findAllByText("Recipe saved")).not.toHaveLength(0);
     expect(client.getQueryState(["plan", "2026-10-19"])?.isInvalidated).toBe(true);
     // The sidebar shows the shopping list, so it is fetched again rather than left stale.
     await vi.waitFor(() => expect(client.getQueryState(["shopping"])?.dataUpdateCount).toBe(2));

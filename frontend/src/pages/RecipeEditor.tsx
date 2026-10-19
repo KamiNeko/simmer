@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
-import { useRecipe } from "@/lib/queries";
+import { renamedSlugs, useRecipe } from "@/lib/queries";
 
 import { type ImportState, ProviderSelect, providerParam } from "./ImportPage";
 
@@ -33,6 +33,8 @@ export function RecipeEditor() {
   const { slug } = useParams();
   const { search, state } = useLocation();
   const imported = (state as { imported?: ImportState } | null)?.imported;
+  // Opened from the recipe's page, which is then the previous history entry to return to.
+  const fromRecipe = !!slug && !!(state as { fromRecipe?: boolean } | null)?.fromRecipe;
   const navigate = useNavigate();
   const client = useQueryClient();
   const existing = useRecipe(slug);
@@ -98,7 +100,12 @@ export function RecipeEditor() {
       client.invalidateQueries({ queryKey: ["plan"] });
       client.setQueryData(["recipe", recipe.slug], recipe);
       toast.success(slug ? "Recipe saved" : "Recipe added");
-      navigate(`/recipes/${recipe.slug}${search}`, { replace: true });
+      renamedSlugs.delete(recipe.slug);
+      if (fromRecipe) {
+        // Go back to the recipe's page rather than adding it to history a second time.
+        if (recipe.slug !== slug) renamedSlugs.set(slug!, recipe.slug);
+        navigate(-1);
+      } else navigate(`/recipes/${recipe.slug}${search}`, { replace: true });
     },
     onError: (e) => {
       setErrors([e.message]);
@@ -160,7 +167,14 @@ export function RecipeEditor() {
             </Button>
           )}
           <Button variant="ghost" size="sm" asChild>
-            <Link to={cancelTo}>
+            <Link
+              to={cancelTo}
+              onClick={(e) => {
+                if (!fromRecipe) return;
+                e.preventDefault();
+                navigate(-1);
+              }}
+            >
               <X /> Cancel
             </Link>
           </Button>
