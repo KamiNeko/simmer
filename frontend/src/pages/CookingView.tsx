@@ -172,7 +172,8 @@ export function CookingView() {
                     aria-current={active ? "step" : undefined}
                     className={cn(
                       "flex w-full gap-4 rounded-xl border p-4 text-left transition-colors",
-                      active ? "border-primary bg-primary/10" : "border-transparent opacity-55 hover:opacity-80",
+                      // Dim other steps with a muted colour rather than opacity, which would push them below readable contrast.
+                      active ? "border-primary bg-primary/10" : "text-muted-foreground hover:text-foreground border-transparent",
                     )}
                   >
                     <span

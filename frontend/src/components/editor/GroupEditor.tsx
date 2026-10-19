@@ -135,7 +135,7 @@ export function GroupEditor({
                 </Button>
                 {showSource && row.original_text && (
                   <p className="text-muted-foreground col-span-full truncate pl-1 font-mono text-[11px]" title={row.original_text}>
-                    <span className="text-primary/70">source</span> {row.original_text}
+                    <span className="text-primary">source</span> {row.original_text}
                   </p>
                 )}
               </div>
