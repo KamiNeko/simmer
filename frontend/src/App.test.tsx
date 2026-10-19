@@ -50,6 +50,23 @@ describe("recipe editor", () => {
     ]);
     expect(api.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
   });
+
+  it("brings the problems into view and focuses a missing title", async () => {
+    fakeApi({});
+    const scrolled = vi.fn<Element["scrollIntoView"]>();
+    Element.prototype.scrollIntoView = scrolled;
+    renderApp("/new");
+    await userEvent.click(await screen.findByRole("button", { name: /save/i }));
+    expect(screen.getByRole("list", { name: "Problems" })).toHaveTextContent("Give the recipe a title.");
+    expect(scrolled).toHaveBeenCalled();
+    expect(screen.getByLabelText("Title")).toHaveFocus();
+
+    await userEvent.type(screen.getByLabelText("Title"), "Bread");
+    await userEvent.type(screen.getByLabelText("Servings"), "0");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(screen.getByRole("list", { name: "Problems" })).toHaveFocus();
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  });
 });
 
 describe("recipe detail", () => {

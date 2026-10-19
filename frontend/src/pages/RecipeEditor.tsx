@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, RotateCcw, Save, Sparkles, TriangleAlert, X } from "lucide-react";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -40,6 +40,10 @@ export function RecipeEditor() {
   const providers = useQuery({ queryKey: ["ai-providers"], queryFn: api.aiProviders });
   const [draft, setDraft] = useState<RecipeDraft | null>(slug ? null : draftFromRecipe(imported?.result.recipe));
   const [errors, setErrors] = useState<string[]>([]);
+  // Counts failed saves, so each one brings the problems into view even when they haven't changed.
+  const [failedSaves, setFailedSaves] = useState(0);
+  const problemsRef = useRef<HTMLUListElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<PhotoChange>(
     imported?.result.image_url ? { kind: "url", url: imported.result.image_url } : { kind: "keep" },
   );
@@ -96,8 +100,19 @@ export function RecipeEditor() {
       toast.success(slug ? "Recipe saved" : "Recipe added");
       navigate(`/recipes/${recipe.slug}${search}`, { replace: true });
     },
-    onError: (e) => setErrors([e.message]),
+    onError: (e) => {
+      setErrors([e.message]);
+      setFailedSaves((n) => n + 1);
+    },
   });
+
+  // The problems show above the form, which may be scrolled out of sight by the time Save is pressed.
+  useEffect(() => {
+    if (!failedSaves) return;
+    problemsRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (titleRef.current && !titleRef.current.value.trim()) titleRef.current.focus({ preventScroll: true });
+    else problemsRef.current?.focus({ preventScroll: true });
+  }, [failedSaves]);
 
   if (slug && existing.isError) return <div className="text-muted-foreground p-8 text-sm">Recipe not found.</div>;
   if (slug && existing.data && !existing.data.can_edit)
@@ -112,6 +127,7 @@ export function RecipeEditor() {
     const { input, errors: problems } = toInput(draft);
     setErrors(problems);
     if (input) save.mutate(input);
+    else setFailedSaves((n) => n + 1);
   };
 
   const runTidy = () => {
@@ -172,7 +188,12 @@ export function RecipeEditor() {
           </div>
         )}
         {errors.length > 0 && (
-          <ul aria-label="Problems" className="border-destructive/40 bg-destructive/10 text-destructive space-y-1 rounded-lg border p-3 text-sm">
+          <ul
+            ref={problemsRef}
+            tabIndex={-1}
+            aria-label="Problems"
+            className="border-destructive/40 bg-destructive/10 text-destructive scroll-mt-20 space-y-1 rounded-lg border p-3 text-sm outline-none"
+          >
             {errors.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -181,6 +202,7 @@ export function RecipeEditor() {
 
         <section className="space-y-4">
           <input
+            ref={titleRef}
             value={draft.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="Recipe title"
