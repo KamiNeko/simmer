@@ -135,6 +135,18 @@ export interface ImportResult {
   warning: string | null;
 }
 
+export interface ShoppingExtra {
+  id: number;
+  text: string;
+  checked: boolean;
+}
+
+export interface ShoppingList {
+  recipes: { servings: number; recipe: Recipe }[];
+  extras: ShoppingExtra[];
+  checked: string[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -231,6 +243,17 @@ export const api = {
     return request<ImportResult>("POST", "/api/import/photos", form);
   },
   tidy: (recipe: RecipeInput, provider?: string) => request<RecipeInput>("POST", "/api/ai/tidy", { recipe, provider }),
+
+  shopping: () => request<ShoppingList>("GET", "/api/shopping"),
+  shoppingPutRecipe: (slug: string, servings: number) =>
+    request<ShoppingList>("PUT", `/api/shopping/recipes/${encodeURIComponent(slug)}`, { servings }),
+  shoppingRemoveRecipe: (slug: string) => request<ShoppingList>("DELETE", `/api/shopping/recipes/${encodeURIComponent(slug)}`),
+  shoppingAddExtra: (text: string) => request<ShoppingList>("POST", "/api/shopping/extras", { text }),
+  shoppingUpdateExtra: (id: number, data: { text?: string; checked?: boolean }) =>
+    request<ShoppingList>("PATCH", `/api/shopping/extras/${id}`, data),
+  shoppingDeleteExtra: (id: number) => request<ShoppingList>("DELETE", `/api/shopping/extras/${id}`),
+  shoppingCheck: (key: string, checked: boolean) => request<ShoppingList>("PUT", "/api/shopping/checked", { key, checked }),
+  shoppingClear: (checkedOnly = false) => request<ShoppingList>("POST", `/api/shopping/clear${checkedOnly ? "?checked_only=true" : ""}`),
 
   tags: () => request<Tag[]>("GET", "/api/tags"),
   parseIngredients: (lines: string[]) => request<Ingredient[]>("POST", "/api/parse-ingredients", { lines }),

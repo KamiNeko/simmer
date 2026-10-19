@@ -253,3 +253,41 @@ class TidyIn(BaseModel):
 
 class PhotoFromUrl(BaseModel):
     url: HttpUrl
+
+
+# Shopping list
+
+
+class ShoppingRecipeIn(BaseModel):
+    servings: float = Field(gt=0, le=1000)
+
+
+class ShoppingRecipeOut(BaseModel):
+    servings: float
+    recipe: RecipeOut
+
+
+class ShoppingExtraIn(BaseModel):
+    text: str = Field(min_length=1, max_length=200)
+
+
+class ShoppingExtraUpdate(BaseModel):
+    text: str | None = Field(default=None, min_length=1, max_length=200)
+    checked: bool | None = None
+
+
+class ShoppingExtraOut(ORMModel):
+    id: int
+    text: str
+    checked: bool
+
+
+class ShoppingCheckIn(BaseModel):
+    key: str = Field(min_length=1, max_length=300)
+    checked: bool
+
+
+class ShoppingList(BaseModel):
+    recipes: list[ShoppingRecipeOut]
+    extras: list[ShoppingExtraOut]
+    checked: list[str]

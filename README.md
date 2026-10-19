@@ -1,6 +1,6 @@
 # Simmer
 
-A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link, pasted text or photos of cookbook pages, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, and a cooking view keeps the screen on.
+A small, self-hosted recipe manager for a household: public read-only recipe pages, ingredient groups (main, marinade, sauce, …), photos, full-text search, and accounts for the people who add and edit recipes. Logged-in users rate recipes, log each time they cook one, and keep private notes such as "needs more salt" that they can tick off once worked into the recipe. Visitors see the average rating and how often a recipe was cooked. Recipes can be imported from a link, pasted text or photos of cookbook pages, with Anthropic, OpenAI or Google Gemini sorting ingredients into groups. Amounts convert between metric, US and the original units, scale with the servings, a cooking view keeps the screen on, and a shopping list adds up the ingredients of several recipes.
 
 All four milestones of the [specification](https://claude.ai/code/artifact/1f322e02-dcf9-40b4-a41e-3d696455e99c) are done.
 
@@ -56,6 +56,10 @@ Amounts are stored as written and only converted for display, so switching never
 - Oven temperatures and sizes in the steps convert too (425°F to 220 °C, 9x13-inch to 23 × 33 cm).
 
 **Cook** opens a full-screen view with large text, ingredient checkboxes and one highlighted step at a time (arrow keys or the Back and Next buttons). The screen stays on while it is open, in browsers that support it.
+
+## Shopping list
+
+Press **Add to list** on a recipe to put it on your shopping list at the servings you are viewing. The list adds up ingredients across recipes (weights and ingredients with a density in grams, other volumes in millilitres, everything else in its own unit) and shows them in your preferred units, with the recipes each line comes from. You can change servings per recipe, add your own items, tick things off as they go in the basket, copy the open items as text, or clear the list. Each user has their own list.
 
 ## Importing recipes
 
