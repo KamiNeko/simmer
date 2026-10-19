@@ -83,3 +83,9 @@ export function unitLabel(unit: string | null, quantity: number | null = null, m
   if (amount !== null && amount > 1 && unit in PLURALS) return PLURALS[unit];
   return UNIT_LABELS[unit] ?? unit;
 }
+
+/** The next servings count up or down: whole servings, with halves below two. */
+export function stepServings(value: number, direction: 1 | -1): number {
+  const step = (direction === 1 ? value < 2 : value <= 2) ? 0.5 : 1;
+  return Math.max(0.5, Math.round((value + direction * step) * 2) / 2);
+}

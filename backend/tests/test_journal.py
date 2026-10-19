@@ -86,7 +86,10 @@ def test_sort_by_rating_and_cooked(admin):
     admin.put(f"/api/recipes/{second}/rating", json={"stars": 5})
     admin.put(f"/api/recipes/{first}/rating", json={"stars": 3})
     admin.post(f"/api/recipes/{first}/cooked", json={})
-    titles = lambda sort: [r["title"] for r in admin.get(f"/api/recipes?sort={sort}").json()]
+
+    def titles(sort):
+        return [r["title"] for r in admin.get(f"/api/recipes?sort={sort}").json()]
+
     assert titles("rating") == ["Beta", "Alpha"]
     assert titles("cooked") == ["Alpha", "Beta"]
     assert titles("last_cooked") == ["Alpha", "Beta"]

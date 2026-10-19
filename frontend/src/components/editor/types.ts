@@ -59,6 +59,8 @@ export const rowFromIngredient = (i: Ingredient): IngredientRow => ({
   grams_per_ml: i.grams_per_ml,
 });
 
+const num = (v: number | null) => (v === null ? "" : String(v));
+
 export function draftFromRecipe(recipe?: RecipeInput): RecipeDraft {
   if (!recipe)
     return {
@@ -73,7 +75,6 @@ export function draftFromRecipe(recipe?: RecipeInput): RecipeDraft {
       groups: [{ key: uid(), name: "", rows: [emptyRow()] }],
       steps: [{ key: uid(), section: "", text: "" }],
     };
-  const num = (v: number | null) => (v === null ? "" : String(v));
   return {
     title: recipe.title,
     description: recipe.description,
@@ -91,11 +92,20 @@ export function draftFromRecipe(recipe?: RecipeInput): RecipeDraft {
 /** Convert the form into the API payload, or return a list of problems to show. */
 export function toInput(draft: RecipeDraft): { input?: RecipeInput; errors: string[] } {
   const errors: string[] = [];
-  const optionalNumber = (value: string, label: string) => {
+  const servings = (value: string) => {
     if (!value.trim()) return null;
     const n = Number(value.replace(",", "."));
-    if (!Number.isFinite(n) || n < 0) {
-      errors.push(`${label} must be a number.`);
+    if (!Number.isFinite(n) || n <= 0) {
+      errors.push("Servings must be a number above zero.");
+      return null;
+    }
+    return n;
+  };
+  const minutes = (value: string, label: string) => {
+    if (!value.trim()) return null;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0) {
+      errors.push(`${label} must be a whole number of minutes.`);
       return null;
     }
     return n;
@@ -128,10 +138,10 @@ export function toInput(draft: RecipeDraft): { input?: RecipeInput; errors: stri
     title: draft.title.trim(),
     description: draft.description.trim(),
     source_url: draft.source_url.trim() || null,
-    servings: optionalNumber(draft.servings, "Servings"),
-    prep_minutes: optionalNumber(draft.prep_minutes, "Prep time"),
-    cook_minutes: optionalNumber(draft.cook_minutes, "Cook time"),
-    total_minutes: optionalNumber(draft.total_minutes, "Total time"),
+    servings: servings(draft.servings),
+    prep_minutes: minutes(draft.prep_minutes, "Prep time"),
+    cook_minutes: minutes(draft.cook_minutes, "Cook time"),
+    total_minutes: minutes(draft.total_minutes, "Total time"),
     tags: draft.tags,
     groups,
     steps: draft.steps

@@ -12,7 +12,8 @@ import { AuthCard } from "./AuthCard";
 export function SetupPage() {
   const [form, setForm] = useState({ username: "", display_name: "", password: "" });
   const { refresh } = useAuth();
-  const setup = useMutation({ mutationFn: () => api.setup(form), onSuccess: () => refresh() });
+  const setup = useMutation({
+    meta: { inlineError: true }, mutationFn: () => api.setup(form), onSuccess: () => refresh() });
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
 
   const submit = (e: FormEvent) => {

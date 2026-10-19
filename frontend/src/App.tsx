@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
 import { RequireLogin } from "./components/RequireLogin";
@@ -16,6 +16,13 @@ import { PlanPage } from "./pages/PlanPage";
 import { ShoppingPage } from "./pages/ShoppingPage";
 import { SetupPage } from "./pages/SetupPage";
 import { UsersPage } from "./pages/UsersPage";
+
+/** A fresh editor for each recipe and each visit to /new, so no draft carries over. */
+function EditorRoute() {
+  const { slug } = useParams();
+  const { key } = useLocation();
+  return <RecipeEditor key={slug ?? key} />;
+}
 
 export function App() {
   const { needsSetup, loading } = useAuth();
@@ -35,11 +42,11 @@ export function App() {
         <Route index element={<EmptyState />} />
         <Route path="recipes/:slug" element={<RecipeDetail />} />
         <Route element={<RequireLogin />}>
-          <Route path="new" element={<RecipeEditor />} />
+          <Route path="new" element={<EditorRoute />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="shopping" element={<ShoppingPage />} />
           <Route path="plan" element={<PlanPage />} />
-          <Route path="recipes/:slug/edit" element={<RecipeEditor />} />
+          <Route path="recipes/:slug/edit" element={<EditorRoute />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="backup" element={<BackupPage />} />
           <Route path="admin/users" element={<UsersPage />} />

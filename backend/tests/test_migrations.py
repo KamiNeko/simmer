@@ -34,3 +34,11 @@ def test_search_index_is_filled_for_existing_recipes(tmp_path):
         ).all()
     assert rows == [(1,)]
     command.downgrade(config, "0001")
+
+
+def test_migrations_match_the_models(tmp_path):
+    """Fails when a model changes without a migration (or the other way round)."""
+    engine = make_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
+    config = alembic_config(engine)
+    command.upgrade(config, "head")
+    command.check(config)

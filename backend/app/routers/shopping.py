@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 
 from ..deps import DB, CurrentUser
 from ..models import Recipe, ShoppingCheck, ShoppingExtra, ShoppingRecipe, User
+from ..recipe_service import RECIPE_LOAD, get_recipe_by_slug, recipe_details
 from ..schemas import (
     ShoppingCheckIn,
     ShoppingExtraIn,
@@ -13,26 +14,28 @@ from ..schemas import (
     ShoppingRecipeIn,
     ShoppingRecipeOut,
 )
-from .recipes import _LOAD, _detail, _get_by_slug
 
 router = APIRouter(prefix="/api/shopping", tags=["shopping"])
 
 
-def _list(db: DB, user: User) -> ShoppingList:
+def build_list(db: DB, user: User) -> ShoppingList:
+    """The user's whole list; every shopping endpoint returns it."""
     entries = db.scalars(
         select(ShoppingRecipe)
         .where(ShoppingRecipe.user_id == user.id)
         .order_by(ShoppingRecipe.added_at)
-        .options(*(selectinload(ShoppingRecipe.recipe).options(o) for o in _LOAD))
+        .options(*(selectinload(ShoppingRecipe.recipe).options(o) for o in RECIPE_LOAD))
     )
     extras = db.scalars(
         select(ShoppingExtra).where(ShoppingExtra.user_id == user.id).order_by(ShoppingExtra.id)
     )
     checked = db.scalars(select(ShoppingCheck.key).where(ShoppingCheck.user_id == user.id))
+    entries = list(entries)
+    details = recipe_details(db, [e.recipe for e in entries], user)
     return ShoppingList(
         recipes=[
-            ShoppingRecipeOut(servings=e.servings, recipe=_detail(db, e.recipe, user))
-            for e in entries
+            ShoppingRecipeOut(servings=e.servings, recipe=detail)
+            for e, detail in zip(entries, details, strict=True)
         ],
         extras=[ShoppingExtraOut.model_validate(x) for x in extras],
         checked=list(checked),
@@ -41,13 +44,13 @@ def _list(db: DB, user: User) -> ShoppingList:
 
 @router.get("", response_model=ShoppingList)
 def get_list(user: CurrentUser, db: DB) -> ShoppingList:
-    return _list(db, user)
+    return build_list(db, user)
 
 
 @router.put("/recipes/{slug}", response_model=ShoppingList)
 def put_recipe(slug: str, data: ShoppingRecipeIn, user: CurrentUser, db: DB) -> ShoppingList:
     """Add a recipe to the list, or change its servings."""
-    recipe: Recipe = _get_by_slug(db, slug)
+    recipe: Recipe = get_recipe_by_slug(db, slug)
     entry = db.scalar(
         select(ShoppingRecipe).where(
             ShoppingRecipe.user_id == user.id, ShoppingRecipe.recipe_id == recipe.id
@@ -58,26 +61,26 @@ def put_recipe(slug: str, data: ShoppingRecipeIn, user: CurrentUser, db: DB) -> 
     else:
         entry.servings = data.servings
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)
 
 
 @router.delete("/recipes/{slug}", response_model=ShoppingList)
 def remove_recipe(slug: str, user: CurrentUser, db: DB) -> ShoppingList:
-    recipe = _get_by_slug(db, slug)
+    recipe = get_recipe_by_slug(db, slug)
     db.execute(
         delete(ShoppingRecipe).where(
             ShoppingRecipe.user_id == user.id, ShoppingRecipe.recipe_id == recipe.id
         )
     )
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)
 
 
 @router.post("/extras", response_model=ShoppingList, status_code=status.HTTP_201_CREATED)
 def add_extra(data: ShoppingExtraIn, user: CurrentUser, db: DB) -> ShoppingList:
     db.add(ShoppingExtra(user_id=user.id, text=data.text.strip()))
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)
 
 
 def _extra(db: DB, user: User, extra_id: int) -> ShoppingExtra:
@@ -97,14 +100,14 @@ def update_extra(
     if data.checked is not None:
         extra.checked = data.checked
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)
 
 
 @router.delete("/extras/{extra_id}", response_model=ShoppingList)
 def delete_extra(extra_id: int, user: CurrentUser, db: DB) -> ShoppingList:
     db.delete(_extra(db, user, extra_id))
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)
 
 
 @router.put("/checked", response_model=ShoppingList)
@@ -118,7 +121,7 @@ def set_checked(data: ShoppingCheckIn, user: CurrentUser, db: DB) -> ShoppingLis
     elif not data.checked and existing is not None:
         db.delete(existing)
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)
 
 
 @router.post("/clear", response_model=ShoppingList)
@@ -132,4 +135,4 @@ def clear(user: CurrentUser, db: DB, checked_only: bool = False) -> ShoppingList
         db.execute(delete(ShoppingRecipe).where(ShoppingRecipe.user_id == user.id))
         db.execute(delete(ShoppingCheck).where(ShoppingCheck.user_id == user.id))
     db.commit()
-    return _list(db, user)
+    return build_list(db, user)

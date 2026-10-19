@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 
-export function TagInput({ value, onChange, suggestions }: { value: string[]; onChange: (tags: string[]) => void; suggestions: string[] }) {
+export function TagInput({ id, value, onChange, suggestions }: { id?: string; value: string[]; onChange: (tags: string[]) => void; suggestions: string[] }) {
   const [text, setText] = useState("");
   const add = (raw: string) => {
     const tag = raw.trim().replace(/,$/, "");
@@ -19,6 +19,7 @@ export function TagInput({ value, onChange, suggestions }: { value: string[]; on
         </span>
       ))}
       <input
+        id={id}
         value={text}
         list="simmer-tags"
         onChange={(e) => (e.target.value.endsWith(",") ? add(e.target.value) : setText(e.target.value))}

@@ -34,12 +34,10 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
       refresh();
       toast.success(`${provider.label} saved`);
     },
-    onError: (e) => toast.error(e.message),
   });
   const test = useMutation({
     mutationFn: () => api.testProvider(provider.kind),
     onSuccess: () => toast.success(`${provider.label} answered`),
-    onError: (e) => toast.error(e.message),
   });
   const remove = useMutation({
     mutationFn: () => api.deleteProvider(provider.kind),
@@ -47,7 +45,6 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
       refresh();
       toast.success(`${provider.label} removed`);
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const submit = (e: FormEvent) => {

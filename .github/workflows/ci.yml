@@ -19,7 +19,7 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check app tests
       - run: ruff format --check app tests
-      - run: pytest -q
+      - run: pytest -q --cov --cov-report=term-missing:skip-covered
 
   frontend:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npm test
+      - run: npm run coverage
       - run: npm run build
 
   image:

@@ -11,10 +11,12 @@ export function PhotoField({ current, value, onChange }: { current: string | nul
 
   useEffect(() => {
     if (value.kind !== "replace") {
+      // oxlint-disable-next-line react/set-state-in-effect -- object URLs are created and revoked with the file
       setPreview(null);
       return;
     }
     const url = URL.createObjectURL(value.file);
+    // oxlint-disable-next-line react/set-state-in-effect
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [value]);

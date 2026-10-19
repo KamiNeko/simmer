@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, RotateCcw, Save, Sparkles, TriangleAlert, X } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -14,13 +14,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { useRecipe } from "@/lib/queries";
 
 import { type ImportState, ProviderSelect, providerParam } from "./ImportPage";
 
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+function Field({ label, htmlFor, children, className }: { label: string; htmlFor?: string; children: ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <Label className="text-muted-foreground mb-1.5 text-xs">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-muted-foreground mb-1.5 text-xs">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -32,7 +35,7 @@ export function RecipeEditor() {
   const imported = (state as { imported?: ImportState } | null)?.imported;
   const navigate = useNavigate();
   const client = useQueryClient();
-  const existing = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!), enabled: !!slug });
+  const existing = useRecipe(slug);
   const tags = useQuery({ queryKey: ["tags"], queryFn: api.tags });
   const providers = useQuery({ queryKey: ["ai-providers"], queryFn: api.aiProviders });
   const [draft, setDraft] = useState<RecipeDraft | null>(slug ? null : draftFromRecipe(imported?.result.recipe));
@@ -56,7 +59,6 @@ export function RecipeEditor() {
   const tidy = useMutation({
     mutationFn: (input: NonNullable<ReturnType<typeof toInput>["input"]>) => api.tidy(input),
     onSuccess: (recipe) => replaceDraft(draftFromRecipe(recipe), "Tidied up. Check the result before saving."),
-    onError: (e) => toast.error(e.message),
   });
   const reimport = useMutation({
     mutationFn: (provider: string) => {
@@ -67,12 +69,10 @@ export function RecipeEditor() {
       setImportInfo(next);
       replaceDraft(draftFromRecipe(next.result.recipe), "Imported again");
     },
-    onError: (e) => toast.error(e.message),
   });
 
-  useEffect(() => {
-    if (existing.data && !draft) setDraft(draftFromRecipe(existing.data));
-  }, [existing.data, draft]);
+  // Fill the form once the recipe has loaded (set during render, so no empty frame shows).
+  if (existing.data && !draft) setDraft(draftFromRecipe(existing.data));
 
   const save = useMutation({
     mutationFn: async (input: ReturnType<typeof toInput>["input"] & object) => {
@@ -106,14 +106,14 @@ export function RecipeEditor() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const { input, errors } = toInput(draft);
-    setErrors(errors);
+    const { input, errors: problems } = toInput(draft);
+    setErrors(problems);
     if (input) save.mutate(input);
   };
 
   const runTidy = () => {
-    const { input, errors } = toInput(draft);
-    setErrors(errors);
+    const { input, errors: problems } = toInput(draft);
+    setErrors(problems);
     if (input) tidy.mutate(input);
   };
 
@@ -169,7 +169,7 @@ export function RecipeEditor() {
           </div>
         )}
         {errors.length > 0 && (
-          <ul className="border-destructive/40 bg-destructive/10 text-destructive space-y-1 rounded-lg border p-3 text-sm">
+          <ul aria-label="Problems" className="border-destructive/40 bg-destructive/10 text-destructive space-y-1 rounded-lg border p-3 text-sm">
             {errors.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -185,30 +185,30 @@ export function RecipeEditor() {
             className="placeholder:text-muted-foreground/60 w-full bg-transparent text-3xl font-extrabold tracking-tight outline-none md:text-4xl"
             autoFocus={!slug}
           />
-          <Textarea value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="Short description (optional)" rows={2} />
+          <Textarea aria-label="Description" value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="Short description (optional)" rows={2} />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Field label="Servings">
-              <Input inputMode="decimal" value={draft.servings} onChange={(e) => set("servings", e.target.value)} placeholder="4" />
+            <Field label="Servings" htmlFor="recipe-servings">
+              <Input id="recipe-servings" inputMode="decimal" value={draft.servings} onChange={(e) => set("servings", e.target.value)} placeholder="4" />
             </Field>
-            <Field label="Prep (min)">
-              <Input inputMode="numeric" value={draft.prep_minutes} onChange={(e) => set("prep_minutes", e.target.value)} />
+            <Field label="Prep (min)" htmlFor="recipe-prep-minutes">
+              <Input id="recipe-prep-minutes" inputMode="numeric" value={draft.prep_minutes} onChange={(e) => set("prep_minutes", e.target.value)} />
             </Field>
-            <Field label="Cook (min)">
-              <Input inputMode="numeric" value={draft.cook_minutes} onChange={(e) => set("cook_minutes", e.target.value)} />
+            <Field label="Cook (min)" htmlFor="recipe-cook-minutes">
+              <Input id="recipe-cook-minutes" inputMode="numeric" value={draft.cook_minutes} onChange={(e) => set("cook_minutes", e.target.value)} />
             </Field>
-            <Field label="Total (min)">
-              <Input inputMode="numeric" value={draft.total_minutes} onChange={(e) => set("total_minutes", e.target.value)} />
+            <Field label="Total (min)" htmlFor="recipe-total-minutes">
+              <Input id="recipe-total-minutes" inputMode="numeric" value={draft.total_minutes} onChange={(e) => set("total_minutes", e.target.value)} />
             </Field>
           </div>
           <Field label="Photo">
             <PhotoField current={existing.data?.photo_url ?? null} value={photo} onChange={setPhoto} />
           </Field>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Tags">
-              <TagInput value={draft.tags} onChange={(t) => set("tags", t)} suggestions={tags.data?.map((t) => t.name) ?? []} />
+            <Field label="Tags" htmlFor="recipe-tags">
+              <TagInput id="recipe-tags" value={draft.tags} onChange={(t) => set("tags", t)} suggestions={tags.data?.map((t) => t.name) ?? []} />
             </Field>
-            <Field label="Source URL">
-              <Input type="url" value={draft.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" />
+            <Field label="Source URL" htmlFor="recipe-source-url">
+              <Input id="recipe-source-url" type="url" value={draft.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" />
             </Field>
           </div>
         </section>

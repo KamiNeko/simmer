@@ -1,3 +1,11 @@
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import func, select, update
+from sqlalchemy.orm import Session
+
+from app.db import get_engine
+from app.models import UserSession
+
 from .conftest import login
 
 
@@ -69,3 +77,50 @@ def test_change_password_and_preferences(admin):
 def test_timestamps_are_utc(admin):
     created_at = admin.get("/api/auth/me").json()["user"]["created_at"]
     assert created_at.endswith(("Z", "+00:00"))
+
+
+def test_admin_edits_users(admin, member):
+    users = admin.get("/api/users").json()
+    assert [(u["username"], u["role"]) for u in users] == [("alex", "admin"), ("sam", "member")]
+    alex_id, sam_id = (u["id"] for u in users)
+    renamed = admin.patch(f"/api/users/{sam_id}", json={"display_name": "Samantha"})
+    assert renamed.json()["display_name"] == "Samantha"
+    assert admin.patch("/api/users/9999", json={"display_name": "x"}).status_code == 404
+
+    # A promotion takes effect on the member's next request.
+    assert admin.patch(f"/api/users/{sam_id}", json={"role": "admin"}).json()["role"] == "admin"
+    assert member.get("/api/users").status_code == 200
+    # With two admins one can step down, but the last one can't.
+    assert member.patch(f"/api/users/{alex_id}", json={"role": "member"}).status_code == 200
+    last = member.patch(f"/api/users/{sam_id}", json={"role": "member"})
+    assert last.status_code == 400
+    assert last.json()["detail"] == "Keep at least one admin"
+    assert admin.get("/api/users").status_code == 403
+
+
+# Sessions
+
+
+def _session_count() -> int:
+    with Session(get_engine()) as db:
+        return db.scalar(select(func.count(UserSession.id)))
+
+
+def test_expired_session_is_removed(admin):
+    assert _session_count() == 1
+    with Session(get_engine()) as db:
+        db.execute(update(UserSession).values(expires_at=datetime.now(UTC) - timedelta(minutes=1)))
+        db.commit()
+    assert admin.get("/api/auth/me").json() == {"user": None, "needs_setup": False}
+    assert _session_count() == 0
+
+
+def test_password_reset_signs_the_user_out(admin, member):
+    assert member.get("/api/auth/me").json()["user"]["username"] == "sam"
+    sam_id = member.get("/api/auth/me").json()["user"]["id"]
+    assert admin.patch(f"/api/users/{sam_id}", json={"password": "reset-pass"}).status_code == 200
+    assert member.get("/api/auth/me").json()["user"] is None
+    assert member.get("/api/shopping").status_code == 401
+    # The admin's own session is untouched.
+    assert admin.get("/api/auth/me").json()["user"]["username"] == "alex"
+    login(member, "sam", "reset-pass")

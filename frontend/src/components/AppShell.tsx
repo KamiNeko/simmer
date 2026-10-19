@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
@@ -12,7 +12,13 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const onIndex = location.pathname === "/";
 
-  useEffect(() => setMenuOpen(false), [location.pathname, location.search]);
+  // Close the menu whenever the page changes.
+  const page = location.pathname + location.search;
+  const [menuPage, setMenuPage] = useState(page);
+  if (page !== menuPage) {
+    setMenuPage(page);
+    setMenuOpen(false);
+  }
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -23,6 +29,7 @@ export function AppShell() {
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
       />
       <aside
         className={cn(

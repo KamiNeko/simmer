@@ -30,6 +30,7 @@ function PhotoPicker({ files, onChange }: { files: File[]; onChange: (files: Fil
   const [previews, setPreviews] = useState<string[]>([]);
   useEffect(() => {
     const urls = files.map((f) => URL.createObjectURL(f));
+    // oxlint-disable-next-line react/set-state-in-effect -- object URLs are created and revoked with the files
     setPreviews(urls);
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [files]);
@@ -123,6 +124,7 @@ export function ImportPage() {
   const choice = !hasAI ? "none" : mode !== "url" && provider === "none" ? DEFAULT : provider;
 
   const run = useMutation({
+    meta: { inlineError: true },
     mutationFn: (request: ImportRequest) => api.importRecipe(request).then((result) => ({ request, result })),
     onSuccess: (state: ImportState) => navigate("/new", { state: { imported: state } }),
   });

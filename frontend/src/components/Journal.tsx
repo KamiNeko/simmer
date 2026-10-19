@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { api, type Comment, type Journal, type Recipe } from "@/lib/api";
@@ -32,7 +33,6 @@ export function CookBar({ recipe, actions }: { recipe: Recipe; actions?: ReactNo
   const rate = useMutation({
     mutationFn: (stars: number | null) => (stars ? api.rate(recipe.slug, stars) : api.unrate(recipe.slug)),
     onSuccess: refresh,
-    onError: (e) => toast.error(e.message),
   });
   const undo = useMutation({ mutationFn: api.undoCooked, onSuccess: () => refresh() });
   const cook = useMutation({
@@ -44,7 +44,6 @@ export function CookBar({ recipe, actions }: { recipe: Recipe; actions?: ReactNo
       const latest = j.cooks[0];
       toast.success("Logged as cooked", { action: { label: "Undo", onClick: () => undo.mutate(latest.id) } });
     },
-    onError: (e) => toast.error(e.message),
   });
 
   const submit = (e: FormEvent) => {
@@ -99,12 +98,11 @@ function NoteItem({ comment, slug }: { comment: Comment; slug: string }) {
   const remove = useMutation({ mutationFn: () => api.deleteComment(comment.id), onSuccess: () => refresh() });
   return (
     <li className="group flex items-start gap-3 py-3">
-      <input
-        type="checkbox"
+      <Checkbox
         checked={comment.done}
         onChange={(e) => update.mutate(e.target.checked)}
         title={comment.done ? "Mark as open" : "Mark as worked into the recipe"}
-        className="border-input checked:bg-primary checked:border-primary mt-0.5 grid size-4.5 shrink-0 cursor-pointer appearance-none place-content-center rounded border-[1.5px] transition-colors before:hidden before:h-2.5 before:w-1.5 before:translate-y-[-1px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-white before:content-[''] checked:before:block"
+        className="mt-0.5"
       />
       <div className="min-w-0 flex-1">
         <p className={cn("leading-snug whitespace-pre-line", comment.done && "text-muted-foreground line-through")}>{comment.text}</p>
@@ -142,7 +140,6 @@ export function NotesSection({ slug }: { slug: string }) {
       setText("");
       refresh();
     },
-    onError: (e) => toast.error(e.message),
   });
   const undo = useMutation({ mutationFn: api.undoCooked, onSuccess: () => refresh() });
 

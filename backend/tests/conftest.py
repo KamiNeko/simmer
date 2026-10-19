@@ -32,6 +32,22 @@ def admin(client):
     return client
 
 
+@pytest.fixture
+def member(admin):
+    """A second browser, logged in as the member "sam" whom the admin created."""
+    from app.main import app
+
+    response = admin.post(
+        "/api/users",
+        json={"username": "sam", "display_name": "Sam", "password": "member-pass"},
+    )
+    assert response.status_code == 201
+    sam = TestClient(app)
+    login(sam, "sam", "member-pass")
+    yield sam
+    sam.close()
+
+
 def login(client, username, password):
     client.cookies.clear()
     response = client.post("/api/auth/login", json={"username": username, "password": password})
