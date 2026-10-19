@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, Clock, ExternalLink, Hash, MoreHorizontal, Pencil, Timer, Trash2, User, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChefHat, Clock, ExternalLink, Hash, MoreHorizontal, Pencil, Timer, Trash2, User, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -14,9 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { CookBar, NotesSection } from "@/components/Journal";
+import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api, type Ingredient } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { formatNumber, formatQuantity, unitLabel } from "@/lib/quantity";
 import { cn, formatDate, formatMinutes, relativeDate } from "@/lib/utils";
 
@@ -55,6 +58,7 @@ export function RecipeDetail() {
   const { search } = useLocation();
   const navigate = useNavigate();
   const client = useQueryClient();
+  const { user } = useAuth();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const recipe = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!) });
@@ -136,6 +140,8 @@ export function RecipeDetail() {
           <Meta icon={<Clock />}>Updated {relativeDate(r.updated_at)}</Meta>
           <Meta icon={<CalendarDays />}>Created {formatDate(r.created_at)}</Meta>
           {r.author && <Meta icon={<User />}>{r.author.display_name}</Meta>}
+          <RatingBadge value={r.avg_rating} count={r.rating_count} />
+          {r.cooked_count > 0 && <Meta icon={<ChefHat />}>Cooked {r.cooked_count}×</Meta>}
           {r.servings && <Meta icon={<Users />}>{formatNumber(r.servings)} servings</Meta>}
           {(r.total_minutes || r.prep_minutes || r.cook_minutes) && (
             <Meta icon={<Timer />}>
@@ -154,6 +160,14 @@ export function RecipeDetail() {
             </a>
           )}
         </div>
+        {r.photo_url && (
+          <img src={r.photo_url} alt="" className="mt-6 max-h-[420px] w-full rounded-xl border object-cover" />
+        )}
+        {user && (
+          <div className="mt-6">
+            <CookBar recipe={r} />
+          </div>
+        )}
         <hr className="my-6" />
 
         {r.description && <p className="text-foreground/90 mb-8 max-w-3xl leading-relaxed whitespace-pre-line">{r.description}</p>}
@@ -207,6 +221,7 @@ export function RecipeDetail() {
             </ol>
           </section>
         </div>
+        {user && <NotesSection slug={r.slug} />}
       </div>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

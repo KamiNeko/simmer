@@ -24,6 +24,7 @@ def test_full_text_search(admin):
     assert _titles(admin, "dessert") == ["Crème brûlée"]
     assert _titles(admin, "chicken boneless") == ["Gochujang Chicken Meal Prep"]
     assert _titles(admin, "chicken sugar") == []
+    assert _titles(admin, "jang") == ["Gochujang Chicken Meal Prep"]
     assert _titles(admin, '"') == ["Crème brûlée", "Gochujang Chicken Meal Prep"]
 
 

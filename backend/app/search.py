@@ -39,8 +39,21 @@ def to_match_query(query: str) -> str | None:
     return " ".join(f'"{w}"*' for w in words) or None
 
 
+def _substring_ids(db: Session, words: list[str]) -> list[int]:
+    """Recipes containing every word anywhere, e.g. "salat" in "Kartoffelsalat"."""
+    haystack = "(title || ' ' || description || ' ' || ingredients || ' ' || tags)"
+    conditions = " AND ".join(f"{haystack} LIKE :w{i}" for i in range(len(words)))
+    params = {f"w{i}": f"%{w}%" for i, w in enumerate(words)}
+    rows = db.execute(text(f"SELECT rowid FROM recipe_search WHERE {conditions}"), params)
+    return [row[0] for row in rows]
+
+
 def search_ids(db: Session, query: str) -> list[int] | None:
-    """Recipe ids ranked by relevance, best first. None means the query had no words."""
+    """Recipe ids ranked by relevance, best first. None means the query had no words.
+
+    Word-prefix matches from the full-text index come first, ranked with title matches
+    weighted highest; recipes that only contain the words inside longer words follow.
+    """
     match = to_match_query(query)
     if match is None:
         return None
@@ -52,6 +65,9 @@ def search_ids(db: Session, query: str) -> list[int] | None:
             ),
             {"q": match},
         )
+        ranked = [row[0] for row in rows]
     except OperationalError:
-        return []
-    return [row[0] for row in rows]
+        ranked = []
+    words = re.findall(r"\w+", query, flags=re.UNICODE)
+    ranked += [rid for rid in _substring_ids(db, words) if rid not in ranked]
+    return ranked

@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownUp, Check, Plus, Search, UtensilsCrossed } from "lucide-react";
+import { ArrowDownUp, Check, ChefHat, Plus, Search, UtensilsCrossed } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
+import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
@@ -13,6 +14,9 @@ const SORTS = [
   { value: "updated", label: "Recently updated" },
   { value: "created", label: "Newest first" },
   { value: "title", label: "Title A–Z" },
+  { value: "rating", label: "Top rated" },
+  { value: "cooked", label: "Most cooked" },
+  { value: "last_cooked", label: "Last cooked by me", needsUser: true },
 ];
 
 export function RecipeList() {
@@ -23,11 +27,12 @@ export function RecipeList() {
   const tag = params.get("tag") ?? undefined;
   const q = params.get("q") ?? undefined;
   const mine = params.get("mine") === "1";
-  const sort = params.get("sort") ?? "updated";
+  const sortParam = params.get("sort") ?? undefined;
+  const sort = sortParam ?? (q ? "relevance" : "updated");
 
   const recipes = useQuery({
-    queryKey: ["recipes", { q, tag, mine, sort, userId: user?.id }],
-    queryFn: () => api.recipes({ q, tag, sort, author: mine ? user?.id : undefined }),
+    queryKey: ["recipes", { q, tag, mine, sort: sortParam, userId: user?.id }],
+    queryFn: () => api.recipes({ q, tag, sort: sortParam, author: mine ? user?.id : undefined }),
   });
 
   const visible = useMemo(() => {
@@ -42,7 +47,7 @@ export function RecipeList() {
 
   const setSort = (value: string) => {
     const next = new URLSearchParams(params);
-    if (value === "updated") next.delete("sort");
+    if (value === (q ? "relevance" : "updated")) next.delete("sort");
     else next.set("sort", value);
     setParams(next, { replace: true });
   };
@@ -66,11 +71,13 @@ export function RecipeList() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {SORTS.map((s) => (
-                  <DropdownMenuItem key={s.value} onSelect={() => setSort(s.value)}>
-                    <Check className={cn(sort !== s.value && "opacity-0")} /> {s.label}
-                  </DropdownMenuItem>
-                ))}
+                {[...(q ? [{ value: "relevance", label: "Best match" }] : []), ...SORTS]
+                  .filter((s) => !("needsUser" in s) || user)
+                  .map((s) => (
+                    <DropdownMenuItem key={s.value} onSelect={() => setSort(s.value)}>
+                      <Check className={cn(sort !== s.value && "opacity-0")} /> {s.label}
+                    </DropdownMenuItem>
+                  ))}
               </DropdownMenuContent>
             </DropdownMenu>
             {user && (
@@ -127,8 +134,14 @@ export function RecipeList() {
                       {recipe.ingredient_preview}
                     </p>
                   )}
-                  {(time || recipe.tags.length > 0) && (
+                  {(time || recipe.tags.length > 0 || recipe.avg_rating !== null || recipe.cooked_count > 0) && (
                     <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <RatingBadge value={recipe.avg_rating} count={recipe.rating_count} className="mr-1" />
+                      {recipe.cooked_count > 0 && (
+                        <span className="mr-1 inline-flex items-center gap-1">
+                          <ChefHat className="size-3" /> {recipe.cooked_count}×
+                        </span>
+                      )}
                       {time && <span className="font-mono">{time}</span>}
                       {recipe.tags.slice(0, 3).map((t) => (
                         <span key={t} className="bg-muted rounded px-1.5 py-0.5">
@@ -138,6 +151,9 @@ export function RecipeList() {
                     </div>
                   )}
                 </div>
+                {recipe.thumb_url && (
+                  <img src={recipe.thumb_url} alt="" loading="lazy" className="size-16 shrink-0 rounded-lg border object-cover" />
+                )}
               </div>
             </Link>
           );
