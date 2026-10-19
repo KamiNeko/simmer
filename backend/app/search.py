@@ -44,8 +44,10 @@ def to_match_query(query: str) -> str | None:
 def _substring_ids(db: Session, words: list[str]) -> list[int]:
     """Recipes containing every word anywhere, e.g. "salat" in "Kartoffelsalat"."""
     haystack = "(title || ' ' || description || ' ' || ingredients || ' ' || tags)"
-    conditions = " AND ".join(f"{haystack} LIKE :w{i}" for i in range(len(words)))
-    params = {f"w{i}": f"%{w}%" for i, w in enumerate(words)}
+    conditions = " AND ".join(f"{haystack} LIKE :w{i} ESCAPE '\\'" for i in range(len(words)))
+    # "_" and "%" are wildcards in LIKE, so escape them to match them literally.
+    escaped = (re.sub(r"([\\_%])", r"\\\1", w) for w in words)
+    params = {f"w{i}": f"%{w}%" for i, w in enumerate(escaped)}
     rows = db.execute(text(f"SELECT rowid FROM recipe_search WHERE {conditions}"), params)
     return [row[0] for row in rows]
 
