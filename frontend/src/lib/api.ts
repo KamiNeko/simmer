@@ -120,8 +120,11 @@ export interface AIProvider {
 }
 
 export interface ImportRequest {
+  /** The page to download, or with html the address that page came from. */
   url?: string;
   text?: string;
+  /** A page the browser already loaded. */
+  html?: string;
   photos?: File[];
   /** A provider kind, "none" to skip AI, or undefined for the default. */
   provider?: string;

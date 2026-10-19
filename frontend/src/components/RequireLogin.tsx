@@ -5,6 +5,6 @@ import { useAuth } from "@/lib/auth";
 export function RequireLogin() {
   const { user } = useAuth();
   const location = useLocation();
-  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   return <Outlet />;
 }

@@ -143,7 +143,10 @@ def _import_url(url: str, provider: Provider | None) -> ImportOut:
         body, final_url, _ = importer.fetch(url)
     except importer.FetchError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-    page = importer.parse_page(body, final_url)
+    return _import_page(importer.parse_page(body, final_url), provider)
+
+
+def _import_page(page: importer.PageData, provider: Provider | None) -> ImportOut:
     plain = importer.draft_from_page(page)
     warning = None
     recipe: RecipeIn | None = None
@@ -163,7 +166,7 @@ def _import_url(url: str, provider: Provider | None) -> ImportOut:
             )
         recipe = plain
         provider = None
-    recipe = RecipeIn.model_validate({**recipe.model_dump(), "source_url": url})
+    recipe = RecipeIn.model_validate({**recipe.model_dump(), "source_url": page.url or None})
     return ImportOut(
         recipe=recipe,
         image_url=page.image_url,
@@ -175,8 +178,12 @@ def _import_url(url: str, provider: Provider | None) -> ImportOut:
 
 @router.post("/import", response_model=ImportOut)
 def import_recipe_draft(data: ImportIn, _: CurrentUser, db: DB) -> ImportOut:
-    """Turn a link or pasted text into a recipe draft for review. Nothing is saved."""
+    """Turn a link, a page from the browser or pasted text into a recipe draft for review.
+    Nothing is saved."""
     provider = resolve_provider(db, data.provider)
+    if data.html:
+        page = importer.parse_page(data.html.encode(), str(data.url) if data.url else "")
+        return _import_page(page, provider)
     if data.url:
         return _import_url(str(data.url), provider)
     text = (data.text or "").strip()
