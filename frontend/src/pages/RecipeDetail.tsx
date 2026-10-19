@@ -65,6 +65,9 @@ export function RecipeDetail() {
       toast.success("Recipe deleted");
       client.invalidateQueries({ queryKey: ["recipes"] });
       client.invalidateQueries({ queryKey: ["tags"] });
+      // The shopping list and meal plan show recipes too.
+      client.invalidateQueries({ queryKey: ["shopping"] });
+      client.invalidateQueries({ queryKey: ["plan"] });
       navigate(`/${search}`);
     },
   });

@@ -10,9 +10,9 @@ import { App } from "./App";
 import { createQueryClient } from "./lib/queryClient";
 import { fakeApi, recipe } from "./test/fakeApi";
 
-function renderApp(path: string) {
+function renderApp(path: string, client = createQueryClient()) {
   return render(
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <App />
         <Toaster />
@@ -71,6 +71,41 @@ describe("recipe detail", () => {
     expect(await screen.findByRole("heading", { name: "Beta", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More servings" }).previousElementSibling).toHaveTextContent(/^2/);
     expect(screen.getByRole("checkbox", { name: /egg/i })).not.toBeChecked();
+  });
+});
+
+describe("lists that show recipes", () => {
+  it("update the shopping count after deleting a recipe on the list", async () => {
+    const soup = recipe();
+    let onList = [{ servings: 4, recipe: soup }];
+    fakeApi({
+      "GET /api/recipes/soup": soup,
+      "GET /api/shopping": () => ({ recipes: onList, extras: [], checked: [] }),
+      "DELETE /api/recipes/soup": () => {
+        onList = [];
+        return null;
+      },
+    });
+    renderApp("/recipes/soup");
+    expect(await screen.findByRole("link", { name: /^Shopping list\s*1$/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /delete recipe/i }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(await screen.findByRole("link", { name: "Shopping list" })).toBeInTheDocument();
+  });
+
+  it("refresh the meal plan and shopping list after saving a recipe", async () => {
+    const soup = recipe({ title: "Soup" });
+    fakeApi({ "GET /api/recipes/soup": soup, "PUT /api/recipes/soup": () => ({ ...soup, title: "Better soup" }) });
+    const client = createQueryClient();
+    client.setQueryData(["plan", "2026-10-19"], []);
+    renderApp("/recipes/soup/edit", client);
+    await userEvent.click(await screen.findByRole("button", { name: /save/i }));
+    await screen.findByText("Recipe saved");
+    expect(client.getQueryState(["plan", "2026-10-19"])?.isInvalidated).toBe(true);
+    // The sidebar shows the shopping list, so it is fetched again rather than left stale.
+    await vi.waitFor(() => expect(client.getQueryState(["shopping"])?.dataUpdateCount).toBe(2));
   });
 });
 
