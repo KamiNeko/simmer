@@ -4,6 +4,7 @@ import { AppShell } from "./components/AppShell";
 import { RequireLogin } from "./components/RequireLogin";
 import { useAuth } from "./lib/auth";
 import { AIProvidersPage } from "./pages/AIProvidersPage";
+import { CookingView } from "./pages/CookingView";
 import { EmptyState } from "./pages/EmptyState";
 import { ImportPage } from "./pages/ImportPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -26,6 +27,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/recipes/:slug/cook" element={<CookingView />} />
       <Route element={<AppShell />}>
         <Route index element={<EmptyState />} />
         <Route path="recipes/:slug" element={<RecipeDetail />} />

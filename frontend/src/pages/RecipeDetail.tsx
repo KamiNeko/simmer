@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, ChefHat, Clock, ExternalLink, Hash, MoreHorizontal, Pencil, Timer, Trash2, User, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChefHat, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, Timer, Trash2, User, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -15,13 +15,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CookBar, NotesSection } from "@/components/Journal";
+import { IngredientLine, useRecipeView, ViewControls } from "@/components/RecipeView";
 import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { api, type Ingredient } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatNumber, formatQuantity, unitLabel } from "@/lib/quantity";
-import { cn, formatDate, formatMinutes, relativeDate } from "@/lib/utils";
+import { convertText } from "@/lib/convert";
+import { formatNumber } from "@/lib/quantity";
+import { formatDate, formatMinutes, relativeDate } from "@/lib/utils";
 
 function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -29,27 +31,6 @@ function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
       {icon}
       {children}
     </span>
-  );
-}
-
-function IngredientLine({ ingredient, checked, onToggle }: { ingredient: Ingredient; checked: boolean; onToggle: () => void }) {
-  const amount = [formatQuantity(ingredient.quantity, ingredient.quantity_max), unitLabel(ingredient.unit, ingredient.quantity, ingredient.quantity_max)].filter(Boolean).join(" ");
-  return (
-    <li>
-      <label className="flex cursor-pointer items-start gap-3 py-1.5">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onToggle}
-          className="border-input checked:bg-primary checked:border-primary mt-0.5 grid size-4.5 shrink-0 cursor-pointer appearance-none place-content-center rounded border-[1.5px] transition-colors before:hidden before:h-2.5 before:w-1.5 before:translate-y-[-1px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-white before:content-[''] checked:before:block"
-        />
-        <span className={cn("leading-snug", checked && "text-muted-foreground line-through")}>
-          {amount && <span className="font-semibold">{amount} </span>}
-          {ingredient.name}
-          {ingredient.note && <span className="text-muted-foreground">, {ingredient.note}</span>}
-        </span>
-      </label>
-    </li>
   );
 }
 
@@ -62,6 +43,7 @@ export function RecipeDetail() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const recipe = useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!) });
+  const view = useRecipeView(recipe.data);
 
   const remove = useMutation({
     mutationFn: () => api.deleteRecipe(slug!),
@@ -172,6 +154,15 @@ export function RecipeDetail() {
 
         {r.description && <p className="text-foreground/90 mb-8 max-w-3xl leading-relaxed whitespace-pre-line">{r.description}</p>}
 
+        <div className="bg-panel/95 sticky top-0 z-10 -mx-5 mb-6 flex flex-wrap items-center gap-2 border-b px-5 py-2.5 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+          <ViewControls view={view} />
+          <Button size="sm" className="ml-auto" asChild>
+            <Link to={`/recipes/${r.slug}/cook?servings=${view.servings}&units=${view.units}`} aria-label="Cooking view" title="Cooking view">
+              <CookingPot /> <span className="hidden sm:inline">Cook</span>
+            </Link>
+          </Button>
+        </div>
+
         <div className="grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <section>
             <h2 className="mb-3 text-lg font-bold">Ingredients</h2>
@@ -187,6 +178,7 @@ export function RecipeDetail() {
                       <IngredientLine
                         key={ingredient.id ?? ii}
                         ingredient={ingredient}
+                        view={view}
                         checked={checked.has(`${gi}-${ii}`)}
                         onToggle={() => toggle(`${gi}-${ii}`)}
                       />
@@ -213,7 +205,7 @@ export function RecipeDetail() {
                       <span className="bg-primary/15 text-primary flex size-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-semibold">
                         {i + 1}
                       </span>
-                      <p className="pt-0.5 leading-relaxed whitespace-pre-line">{step.text}</p>
+                      <p className="pt-0.5 leading-relaxed whitespace-pre-line">{convertText(step.text, view.units)}</p>
                     </div>
                   </li>
                 );
