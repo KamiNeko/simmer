@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from .. import importer, photos, search
 from ..deps import DB, CurrentUser, OptionalUser
 from ..ingredient_parser import parse_ingredient
-from ..models import Recipe, Tag, User, recipe_tags
+from ..models import Recipe, ShoppingRecipe, Tag, User, recipe_tags
 from ..recipe_service import (
     RECIPE_LOAD,
     apply_recipe,
@@ -19,6 +19,7 @@ from ..recipe_service import (
 )
 from ..schemas import ParseIn, PhotoFromUrl, RecipeIn, RecipeOut, RecipeSummary, TagOut
 from ..stats import RecipeStats, stats_for
+from .shopping import forget_stale_checks
 
 router = APIRouter(prefix="/api", tags=["recipes"])
 
@@ -115,10 +116,15 @@ def delete_recipe(slug: str, user: CurrentUser, db: DB) -> None:
     if not can_edit(user, recipe):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only delete your own recipes")
     photo = recipe.photo
+    shoppers = list(
+        db.scalars(select(User).join(ShoppingRecipe).where(ShoppingRecipe.recipe_id == recipe.id))
+    )
     search.remove_recipe(db, recipe.id)
     db.delete(recipe)
     db.flush()
     delete_orphan_tags(db)
+    for shopper in shoppers:
+        forget_stale_checks(db, shopper)
     db.commit()
     photos.delete_photo(photo)
 

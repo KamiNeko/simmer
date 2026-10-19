@@ -28,6 +28,26 @@ export function formatQuantity(quantity: number | null, max: number | null): str
   return max !== null && max !== quantity ? `${formatNumber(quantity)}–${formatNumber(max)}` : formatNumber(quantity);
 }
 
+/** A plain decimal without exponent notation, which parseQuantity could not read back. */
+function plainDecimal(value: number): string {
+  const text = String(value);
+  if (!text.includes("e")) return text;
+  return value >= 1 ? BigInt(Math.round(value)).toString() : value.toFixed(20).replace(/0+$/, "");
+}
+
+/** Format a number for editing: a fraction glyph only when it is exact, so saving doesn't round it. */
+function formatExactNumber(value: number): string {
+  const whole = Math.floor(value);
+  const match = FRACTIONS.find(([v]) => Math.abs(value - whole - v) < 1e-9);
+  return match ? `${whole || ""}${match[1]}` : plainDecimal(value);
+}
+
+/** An amount as the quantity field shows it: "1½", "0.12", "2-3". */
+export function formatQuantityInput(quantity: number | null, max: number | null): string {
+  if (quantity === null) return "";
+  return max !== null && max !== quantity ? `${formatExactNumber(quantity)}-${formatExactNumber(max)}` : formatExactNumber(quantity);
+}
+
 function parseNumber(text: string): number | null {
   let total = 0;
   const parts = text

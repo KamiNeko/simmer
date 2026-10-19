@@ -1,5 +1,11 @@
 import copy
 
+from sqlalchemy import update
+from sqlalchemy.orm import Session
+
+from app import db as db_module
+from app.models import Step
+
 from .conftest import SAMPLE_RECIPE, login
 
 
@@ -85,3 +91,52 @@ def test_search_and_filter(admin):
         "Gochujang Chicken Meal Prep",
         "Pancakes",
     ]
+
+
+def test_blank_fields_are_stripped_before_validation(admin):
+    assert admin.post("/api/recipes", json={**SAMPLE_RECIPE, "title": "   "}).status_code == 422
+
+    blank_rows = copy.deepcopy(SAMPLE_RECIPE)
+    blank_rows["title"] = "  Soup  "
+    blank_rows["steps"] = [{"text": "   "}, {"section": " Serve ", "text": " Eat. "}]
+    blank_rows["groups"][0]["ingredients"].append({"name": "  ", "note": ""})
+    created = admin.post("/api/recipes", json=blank_rows)
+    assert created.status_code == 201, created.text
+    recipe = created.json()
+    assert recipe["title"] == "Soup"
+    assert [(s["section"], s["text"]) for s in recipe["steps"]] == [("Serve", "Eat.")]
+    assert len(recipe["groups"][0]["ingredients"]) == 2
+    assert admin.get(f"/api/recipes/{recipe['slug']}").status_code == 200
+
+    # A nameless ingredient that has an amount is still a mistake to point out.
+    nameless = copy.deepcopy(SAMPLE_RECIPE)
+    nameless["groups"][0]["ingredients"].append({"quantity": 2, "name": " "})
+    assert admin.post("/api/recipes", json=nameless).status_code == 422
+
+
+def test_recipe_with_a_stored_blank_step_still_loads(admin):
+    slug = admin.post("/api/recipes", json=SAMPLE_RECIPE).json()["slug"]
+    with Session(db_module.get_engine()) as session:
+        session.execute(update(Step).values(text=""))
+        session.commit()
+    assert admin.get(f"/api/recipes/{slug}").status_code == 200
+
+
+def test_typed_units_are_stored_as_unit_codes(admin):
+    recipe = copy.deepcopy(SAMPLE_RECIPE)
+    recipe["groups"] = [
+        {
+            "ingredients": [
+                {"quantity": 2, "unit": "cups", "name": "rice"},
+                {"quantity": 1, "unit": "Tbsp", "name": "oil"},
+                {"quantity": 1, "unit": "T", "name": "sugar"},
+                {"quantity": 200, "unit": "grams", "name": "flour"},
+                {"quantity": 3, "unit": "cloves", "name": "garlic"},
+                {"quantity": 1, "unit": "Fl Oz", "name": "milk"},
+                {"quantity": 1, "unit": "sprig", "name": "thyme"},
+            ]
+        }
+    ]
+    created = admin.post("/api/recipes", json=recipe).json()
+    units = [i["unit"] for i in created["groups"][0]["ingredients"]]
+    assert units == ["cup", "tbsp", "tbsp", "g", "clove", "fl_oz", "sprig"]

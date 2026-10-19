@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from . import photos
 from .models import Ingredient, IngredientGroup, Recipe, Step, Tag, User, recipe_tags
-from .schemas import RecipeIn, RecipeOut, RecipeSummary
+from .schemas import IngredientIn, RecipeIn, RecipeOut, RecipeSummary
 from .stats import RecipeStats, stats_for
+from .units import normalize_unit
 
 RECIPE_LOAD = (
     selectinload(Recipe.groups).selectinload(IngredientGroup.ingredients),
@@ -105,6 +106,14 @@ def _resolve_tags(db: Session, names: list[str]) -> list[Tag]:
     return tags
 
 
+def _ingredient(position: int, data: IngredientIn) -> Ingredient:
+    fields = data.model_dump()
+    # Store "cups" or "Tbsp" as the unit code so conversion and the shopping list know it.
+    if data.unit:
+        fields["unit"] = normalize_unit(data.unit) or data.unit
+    return Ingredient(position=position, **fields)
+
+
 def apply_recipe(db: Session, recipe: Recipe, data: RecipeIn) -> None:
     """Copy the form onto the recipe, replacing its groups, steps and tags wholesale."""
     recipe.title = data.title.strip()
@@ -119,9 +128,7 @@ def apply_recipe(db: Session, recipe: Recipe, data: RecipeIn) -> None:
         IngredientGroup(
             name=g.name.strip(),
             position=gi,
-            ingredients=[
-                Ingredient(position=ii, **i.model_dump()) for ii, i in enumerate(g.ingredients)
-            ],
+            ingredients=[_ingredient(ii, i) for ii, i in enumerate(g.ingredients)],
         )
         for gi, g in enumerate(data.groups)
         if g.ingredients or g.name.strip()

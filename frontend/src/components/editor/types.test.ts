@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { draftFromRecipe, toInput } from "./types";
+import { draftFromRecipe, rowFromIngredient, toInput } from "./types";
 
 const draft = (changes: Partial<ReturnType<typeof draftFromRecipe>> = {}) => ({ ...draftFromRecipe(), title: "Soup", ...changes });
 
@@ -43,5 +43,34 @@ describe("toInput", () => {
 
     groups[0].rows.pop();
     expect(toInput(draft({ groups })).input?.groups[0].ingredients[0]).toMatchObject({ quantity: 1, quantity_max: 2, unit: "cup", name: "Rice" });
+  });
+});
+
+const ingredient = (quantity: number | null, quantity_max: number | null = null) => ({
+  quantity,
+  quantity_max,
+  unit: "cup",
+  name: "Rice",
+  note: "",
+  original_text: "",
+  grams_per_ml: null,
+});
+
+describe("rowFromIngredient", () => {
+  it.each([
+    [1.5, null, "1½"],
+    [1 / 3, null, "⅓"],
+    [2, 3, "2-3"],
+    [0.12, null, "0.12"],
+    [1.49, null, "1.49"],
+    [0.3, 0.33, "0.3-0.33"],
+    [1e21, null, "1000000000000000000000"],
+    [1e-7, null, "0.0000001"],
+    [null, null, ""],
+  ])("shows %s–%s as %s and saves it unchanged", (quantity, max, text) => {
+    const row = rowFromIngredient(ingredient(quantity, max));
+    expect(row.qty).toBe(text);
+    const saved = toInput(draft({ groups: [{ key: "g", name: "", rows: [row] }] })).input?.groups[0].ingredients[0];
+    expect(saved).toMatchObject({ quantity, quantity_max: max });
   });
 });

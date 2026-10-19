@@ -60,6 +60,20 @@ describe("us", () => {
   ])("%j -> %s", (i, expected) => expect(show(i, "us")).toBe(expected));
 });
 
+describe("zero amounts", () => {
+  it.each([
+    [ing(0, "oz"), "metric", "0 g"],
+    [ing(0, "cup"), "metric", "0 ml"],
+    [ing(0, "g"), "us", "0 oz"],
+    [ing(0, "ml"), "us", "0 tsp"],
+    [ing(0, "g", null, 100), "metric", "0–100 g"],
+  ] as const)("%j in %s -> %s", (i, system, expected) => expect(show(i, system)).toBe(expected));
+
+  it("still shows a tiny amount as the smallest step", () => {
+    expect(show(ing(0.1, "g"), "metric")).toBe("0.5 g");
+  });
+});
+
 describe("original", () => {
   it("only scales", () => {
     expect(show(ing(2, "cup", 0.85), "original", 1.5)).toBe("3 cups");
@@ -78,6 +92,13 @@ describe("convertText", () => {
 
   it("converts to US", () => {
     expect(text("Bake at 200°C in a 20 x 30 cm dish, slices 1 cm thick.", "us")).toBe("Bake at 390 °F in a 8 × 12 inch dish, slices ½ inch thick.");
+    expect(text("Heat to 180 degrees C.", "us")).toBe("Heat to 355 °F.");
+  });
+
+  it("needs a degree sign or word for Celsius, and allows a space before F", () => {
+    expect(text("Use 2C milk.", "us")).toBe("Use 2C milk.");
+    expect(text("Bake at 350 F.", "metric")).toBe("Bake at 175 °C.");
+    expect(text("Bake at 325 - 350 F.", "metric")).toBe("Bake at 165–175 °C.");
   });
 
   it("leaves the original alone", () => {

@@ -187,8 +187,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers: body === undefined || isForm ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });
+  // For bodies that aren't JSON, such as a proxy's HTML login or error page.
+  const unexpected = `The server sent an unexpected response (status ${response.status})`;
   if (!response.ok) {
-    let message = response.statusText;
+    let message = response.statusText || unexpected;
     try {
       const data = await response.json();
       if (typeof data.detail === "string") message = data.detail;
@@ -198,7 +200,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     }
     throw new ApiError(response.status, message);
   }
-  return response.status === 204 ? (undefined as T) : response.json();
+  if (response.status === 204) return undefined as T;
+  try {
+    return await response.json();
+  } catch {
+    throw new ApiError(response.status, unexpected);
+  }
 }
 
 export const api = {

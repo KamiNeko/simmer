@@ -23,7 +23,8 @@ _UNICODE_FRACTIONS = {
     "⅞": 0.875,
 }
 
-_NUMBER = r"(?:\d*\s*[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?(?:\s+\d+/\d+)?|\d+/\d+)"
+# Mixed numbers and fractions come before plain numbers, or "1/2" would match as "1".
+_NUMBER = r"(?:\d+\s+\d+/\d+|\d+/\d+|\d*\s*[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?)"
 _QUANTITY_RE = re.compile(
     # Ranges are written with hyphens, en dashes or "to".
     rf"^\s*(?P<q1>{_NUMBER})(?:\s*(?:-|–|to)\s*(?P<q2>{_NUMBER}))?\s*",  # noqa: RUF001
@@ -67,10 +68,14 @@ def parse_ingredient(line: str) -> ParsedIngredient:
     quantity = quantity_max = None
     match = _QUANTITY_RE.match(rest)
     if match:
-        quantity = parse_number(match.group("q1"))
-        if match.group("q2"):
-            quantity_max = parse_number(match.group("q2"))
-        rest = rest[match.end() :]
+        try:
+            quantity = parse_number(match.group("q1"))
+            if match.group("q2"):
+                quantity_max = parse_number(match.group("q2"))
+            rest = rest[match.end() :]
+        except ZeroDivisionError:
+            # "1/0" is no quantity at all; keep the text as the user wrote it.
+            quantity = quantity_max = None
 
     unit = None
     lowered = rest.lower()

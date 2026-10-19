@@ -80,3 +80,10 @@ def test_photo_rejects_non_images_and_visitors(admin):
     )
     assert denied.status_code == 401
     assert admin.get("/media/photos/../simmer.db").status_code == 404
+
+
+def test_search_treats_like_wildcards_literally(admin):
+    admin.post("/api/recipes", json=SAMPLE_RECIPE)
+    admin.post("/api/recipes", json={**SAMPLE_RECIPE, "title": "Leftover_rice"})
+    assert _titles(admin, "_") == ["Leftover_rice"]
+    assert _titles(admin, "r_ce") == []

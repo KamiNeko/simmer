@@ -3,7 +3,15 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import selectinload
 
 from ..deps import DB, CurrentUser
-from ..models import Recipe, ShoppingCheck, ShoppingExtra, ShoppingRecipe, User
+from ..models import (
+    Ingredient,
+    IngredientGroup,
+    Recipe,
+    ShoppingCheck,
+    ShoppingExtra,
+    ShoppingRecipe,
+    User,
+)
 from ..recipe_service import RECIPE_LOAD, get_recipe_by_slug, recipe_details
 from ..schemas import (
     ShoppingCheckIn,
@@ -74,8 +82,28 @@ def remove_recipe(slug: str, user: CurrentUser, db: DB) -> ShoppingList:
             ShoppingRecipe.user_id == user.id, ShoppingRecipe.recipe_id == recipe.id
         )
     )
+    forget_stale_checks(db, user)
     db.commit()
     return build_list(db, user)
+
+
+def forget_stale_checks(db: DB, user: User) -> None:
+    """Untick lines that no recipe left on the list adds up to, so they don't come back ticked.
+
+    Keys are "<lower-case name>|<unit>" (see combineIngredients in frontend/src/lib/shopping.ts).
+    The unit part depends on conversion tables that live in the frontend, so only the name is
+    compared: a tick stays while any recipe on the list still has an ingredient of that name.
+    """
+    names = db.scalars(
+        select(Ingredient.name)
+        .join(IngredientGroup)
+        .join(ShoppingRecipe, ShoppingRecipe.recipe_id == IngredientGroup.recipe_id)
+        .where(ShoppingRecipe.user_id == user.id)
+    )
+    prefixes = {f"{name.strip().lower()}|" for name in names}
+    for check in db.scalars(select(ShoppingCheck).where(ShoppingCheck.user_id == user.id)):
+        if not any(check.key.startswith(prefix) for prefix in prefixes):
+            db.delete(check)
 
 
 @router.post("/extras", response_model=ShoppingList, status_code=status.HTTP_201_CREATED)

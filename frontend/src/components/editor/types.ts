@@ -1,5 +1,5 @@
 import type { Ingredient, RecipeInput } from "@/lib/api";
-import { formatQuantity, parseQuantity } from "@/lib/quantity";
+import { formatQuantityInput, parseQuantity } from "@/lib/quantity";
 
 let counter = 0;
 export const uid = () => `k${++counter}`;
@@ -51,7 +51,7 @@ export const emptyRow = (): IngredientRow => ({
 
 export const rowFromIngredient = (i: Ingredient): IngredientRow => ({
   key: uid(),
-  qty: formatQuantity(i.quantity, i.quantity_max).replace("–", "-"),
+  qty: formatQuantityInput(i.quantity, i.quantity_max),
   unit: i.unit ?? "",
   name: i.name,
   note: i.note,

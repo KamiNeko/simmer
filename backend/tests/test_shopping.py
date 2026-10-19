@@ -72,6 +72,34 @@ def test_deleting_a_recipe_removes_it_from_lists(admin):
     assert admin.get("/api/shopping").json()["recipes"] == []
 
 
+def test_ticks_are_forgotten_once_no_recipe_needs_them(admin):
+    slug = _recipe(admin)
+    other = admin.post(
+        "/api/recipes",
+        json={"title": "Plain rice", "groups": [{"ingredients": [{"name": "Rice "}]}]},
+    ).json()["slug"]
+    admin.put(f"/api/shopping/recipes/{slug}", json={"servings": 4})
+    admin.put(f"/api/shopping/recipes/{other}", json={"servings": 2})
+    for key in ("rice|g", "rice|", "gochujang|ml", "soy sauce|ml"):
+        admin.put("/api/shopping/checked", json={"key": key, "checked": True})
+
+    # Rice is still needed by the other recipe, in any unit.
+    data = admin.delete(f"/api/shopping/recipes/{slug}").json()
+    assert sorted(data["checked"]) == ["rice|", "rice|g"]
+
+    # Removing the last recipe forgets the rest, so re-adding starts unticked.
+    admin.put(f"/api/shopping/recipes/{slug}", json={"servings": 4})
+    admin.put("/api/shopping/checked", json={"key": "gochujang|ml", "checked": True})
+    assert admin.delete(f"/api/recipes/{other}").status_code == 204
+    assert sorted(admin.get("/api/shopping").json()["checked"]) == [
+        "gochujang|ml",
+        "rice|",
+        "rice|g",
+    ]
+    assert admin.delete(f"/api/shopping/recipes/{slug}").json()["checked"] == []
+    assert admin.put(f"/api/shopping/recipes/{slug}", json={"servings": 4}).json()["checked"] == []
+
+
 def test_shopping_list_queries_are_batched(admin):
     """The number of queries doesn't grow with the number of recipes on the list."""
 
