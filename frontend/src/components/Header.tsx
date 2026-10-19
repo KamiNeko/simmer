@@ -116,7 +116,7 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="bg-primary/15 text-primary border-primary/30 flex size-9 items-center justify-center rounded-full border text-sm font-semibold uppercase"
+                className="bg-primary/8 text-primary border-primary/30 flex size-9 items-center justify-center rounded-full border text-sm font-semibold uppercase"
                 aria-label="Account menu"
               >
                 {user.display_name.slice(0, 1)}
