@@ -210,6 +210,18 @@ describe("importing pages from the browser", () => {
     expect(body.provider).toBe("none");
   });
 
+  it("explains the bookmark and offers its address to copy", async () => {
+    fakeApi({ "GET /api/ai/providers": [] });
+    renderApp("/import");
+    await userEvent.click(await screen.findByText("How does the bookmark work?"));
+    expect(screen.getByText("Show the bookmarks bar")).toBeVisible();
+    expect(screen.getByRole("img", { name: /dragging the save to simmer button/i })).toBeInTheDocument();
+    // jsdom can't copy, so the address is shown to copy by hand.
+    await userEvent.click(screen.getByRole("button", { name: /copy bookmark address/i }));
+    const address = await screen.findByRole("textbox", { name: "Bookmark address" });
+    expect((address as HTMLTextAreaElement).value).toMatch(/^javascript:.*simmer-ready/);
+  });
+
   it("imports the page the Save to Simmer bookmark sends", async () => {
     Object.defineProperty(window, "opener", { value: window, configurable: true });
     try {

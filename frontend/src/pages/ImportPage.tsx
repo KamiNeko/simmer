@@ -1,15 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Bookmark, Camera, FileText, ImagePlus, Link2, Loader2, Sparkles, X } from "lucide-react";
+import { Camera, FileText, ImagePlus, Link2, Loader2, Sparkles, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { BookmarkletGuide } from "@/components/BookmarkletGuide";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type AIProvider, api, type ImportRequest } from "@/lib/api";
-import { bookmarklet, isBrowserPage, looksLikeHtml, READY, reducePage } from "@/lib/browserImport";
+import { isBrowserPage, looksLikeHtml, READY, reducePage } from "@/lib/browserImport";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -109,29 +110,6 @@ export function ProviderSelect({
 }
 
 export const providerParam = (value: string) => (value === DEFAULT ? undefined : value);
-
-/** The Save to Simmer bookmark, to drag to the bookmarks bar. */
-function BookmarkletButton() {
-  const link = useRef<HTMLAnchorElement>(null);
-  // React refuses javascript: links, so the bookmark's script replaces the href after rendering.
-  useEffect(() => link.current?.setAttribute("href", bookmarklet(window.location.origin)), []);
-  return (
-    <div className="bg-muted/50 space-y-2 rounded-lg border p-3 text-sm">
-      <p className="text-muted-foreground">
-        Some sites block Simmer from downloading their pages. For those, drag this button to your browser's bookmarks bar, then
-        click the bookmark on the recipe page.
-      </p>
-      <a
-        ref={link}
-        href="/import"
-        title="Drag me to your bookmarks bar"
-        className="bg-background hover:border-primary/60 inline-flex cursor-grab items-center gap-2 rounded-md border px-3 py-1.5 font-medium [&_svg]:size-4"
-      >
-        <Bookmark /> Save to Simmer
-      </a>
-    </div>
-  );
-}
 
 export function ImportPage() {
   const navigate = useNavigate();
@@ -242,7 +220,7 @@ export function ImportPage() {
                 placeholder="https://…"
                 autoFocus
               />
-              <BookmarkletButton />
+              <BookmarkletGuide />
             </div>
           ) : (
             <div className="space-y-2">
