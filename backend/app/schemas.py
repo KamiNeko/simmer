@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, HttpUrl, field_validator
@@ -329,36 +329,6 @@ class ShoppingList(BaseModel):
     recipes: list[ShoppingRecipeOut]
     extras: list[ShoppingExtraOut]
     checked: list[str]
-
-
-# Meal plan
-
-
-class PlanEntryIn(BaseModel):
-    day: date
-    recipe: str | None = Field(default=None, description="Recipe slug; leave out for a note")
-    servings: float | None = Field(default=None, gt=0, le=1000)
-    note: str = Field(default="", max_length=200)
-
-
-class PlanEntryUpdate(BaseModel):
-    day: date | None = None
-    servings: float | None = Field(default=None, gt=0, le=1000)
-    note: str | None = Field(default=None, max_length=200)
-
-
-class PlanEntryOut(BaseModel):
-    id: int
-    day: date
-    servings: float | None
-    note: str
-    recipe: RecipeSummary | None
-    added_by: AuthorOut | None
-
-
-class PlanRange(BaseModel):
-    start: date
-    end: date
 
 
 # Export and import

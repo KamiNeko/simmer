@@ -95,7 +95,7 @@ export function BackupPage() {
       {user?.role === "admin" && (
         <Panel
           title="Full backup"
-          description="A copy of everything in the data folder: the database with users, ratings, notes, the meal plan and shopping lists, all photos, and the key that encrypts the AI provider keys. Keep it somewhere safe."
+          description="A copy of everything in the data folder: the database with users, ratings, notes, shopping lists, all photos, and the key that encrypts the AI provider keys. Keep it somewhere safe."
         >
           <Button variant="outline" asChild>
             <a href="/api/admin/backup" download>

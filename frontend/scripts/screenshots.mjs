@@ -44,7 +44,7 @@ for (const { dish, ...recipe } of RECIPES) {
   if (!response.ok()) throw new Error(`photo for ${slug}: ${response.status()}`);
 }
 
-// A lived-in journal, shopping list and meal plan
+// A lived-in journal and shopping list
 const stars = { "gochujang-chicken-meal-prep": 5, shakshuka: 5, "kimchi-fried-rice": 4, "mushroom-risotto": 4, "classic-banana-bread": 5, "thai-green-curry": 4 };
 for (const [slug, value] of Object.entries(stars)) await call("PUT", `/api/recipes/${slug}/rating`, { stars: value });
 for (const slug of ["gochujang-chicken-meal-prep", "gochujang-chicken-meal-prep", "shakshuka", "kimchi-fried-rice"])
@@ -53,24 +53,6 @@ await call("POST", "/api/recipes/gochujang-chicken-meal-prep/cooked", { note: "H
 const done = await call("POST", "/api/recipes/gochujang-chicken-meal-prep/comments", { text: "Try with tofu for Sam." });
 await call("PATCH", `/api/comments/${done.id}`, { done: true });
 
-const monday = new Date();
-monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-const day = (offset) => {
-  const d = new Date(monday);
-  d.setDate(d.getDate() + offset);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-const plan = [
-  [0, { recipe: "gochujang-chicken-meal-prep", servings: 4 }],
-  [1, { recipe: "greek-salad", servings: 2 }],
-  [2, { recipe: "mushroom-risotto", servings: 3 }],
-  [3, { note: "Leftovers" }],
-  [4, { recipe: "thai-green-curry", servings: 4 }],
-  [5, { note: "Eating out with Sam's parents" }],
-  [6, { recipe: "shakshuka", servings: 2 }],
-  [6, { recipe: "classic-banana-bread" }],
-];
-for (const [offset, entry] of plan) await call("POST", "/api/plan", { day: day(offset), ...entry });
 await call("PUT", "/api/shopping/recipes/gochujang-chicken-meal-prep", { servings: 4 });
 await call("PUT", "/api/shopping/recipes/shakshuka", { servings: 2 });
 await call("PUT", "/api/shopping/recipes/thai-green-curry", { servings: 4 });
@@ -116,11 +98,9 @@ await shot("cooking", "/recipes/gochujang-chicken-meal-prep/cook", {
     await page.keyboard.press("ArrowRight");
   },
 });
-await shot("meal-plan", "/plan", { dark: false });
 await shot("shopping-list", "/shopping");
 await shot("import", "/import", { dark: false });
 await shot("mobile-recipe", "/recipes/shakshuka", { phone: true });
 await shot("mobile-cooking", "/recipes/shakshuka/cook", { phone: true });
-await shot("mobile-plan", "/plan", { phone: true, dark: false });
 
 await browser.close();

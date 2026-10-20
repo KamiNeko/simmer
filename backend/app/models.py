@@ -244,7 +244,10 @@ class ShoppingCheck(Base):
 
 
 class PlanEntry(Base):
-    """A recipe or a note ("Leftovers", "Eating out") on a day of the household's meal plan."""
+    """A day's entry of the retired meal plan.
+
+    The feature is gone, but the table stays so the data of existing installs survives.
+    """
 
     __tablename__ = "plan_entries"
 

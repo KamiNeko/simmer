@@ -4,7 +4,7 @@
 
 **The recipe book for your household, on your own server.**
 
-Collect recipes from anywhere, cook from a calm full-screen view, plan the week and shop from one list.<br>
+Collect recipes from anywhere, cook from a calm full-screen view and shop from one list.<br>
 Self-hosted, with nothing to install on your phone.
 
 [![CI](https://github.com/KamiNeko/simmer/actions/workflows/ci.yml/badge.svg)](https://github.com/KamiNeko/simmer/actions/workflows/ci.yml)
@@ -35,7 +35,6 @@ Family recipes end up scattered across bookmarks, screenshots, cookbooks and cha
 | ⚖️ **Units and servings** | Metric, US or as written, per person and per recipe. Scale servings up or down. Oven temperatures and pan sizes in the steps convert too. |
 | 👩‍🍳 **Cooking view** | Large text, one highlighted step at a time, ingredient checkboxes, keyboard navigation and a screen that stays on. |
 | ⭐ **Journal** | Rate recipes, log each time you cook them, and keep private notes like "needs more salt" that you tick off once you have worked them in. |
-| 🗓️ **Meal plan** | A shared week plan with recipes and notes such as "Leftovers". Send the whole week to the shopping list. |
 | 🛒 **Shopping list** | Adds up ingredients across recipes in your units, with your own extra items and tick-off as you shop. |
 | 💾 **Export and backup** | Download all recipes as a portable zip, import it elsewhere, or take a full backup of the database and photos. |
 | 🌗 **Light and dark mode** | Follows your system, or switch with one click. |
@@ -57,20 +56,18 @@ Family recipes end up scattered across bookmarks, screenshots, cookbooks and cha
     <td colspan="2" align="center"><em>A recipe written in cups, shown in grams</em></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/meal-plan.png" alt="Weekly meal plan"></td>
     <td width="50%"><img src="docs/images/shopping-list.png" alt="Shopping list adding up three recipes"></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Meal plan for the week</em></td>
-    <td align="center"><em>One shopping list for several recipes</em></td>
-  </tr>
-  <tr>
     <td width="50%"><img src="docs/images/import.png" alt="Importing a recipe from a link"></td>
-    <td width="50%"><img src="docs/images/recipe-ingredients.png" alt="Ingredient groups, step sections and private notes"></td>
   </tr>
   <tr>
+    <td align="center"><em>One shopping list for several recipes</em></td>
     <td align="center"><em>Import from a link, text or photos</em></td>
-    <td align="center"><em>Ingredient groups, step sections and private notes</em></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/recipe-ingredients.png" alt="Ingredient groups, step sections and private notes"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>Ingredient groups, step sections and private notes</em></td>
   </tr>
 </table>
 
@@ -78,10 +75,9 @@ Family recipes end up scattered across bookmarks, screenshots, cookbooks and cha
   <tr>
     <td align="center"><img src="docs/images/mobile-recipe.png" alt="Recipe on a phone" width="250"></td>
     <td align="center"><img src="docs/images/mobile-cooking.png" alt="Cooking view on a phone" width="250"></td>
-    <td align="center"><img src="docs/images/mobile-plan.png" alt="Meal plan on a phone" width="250"></td>
   </tr>
   <tr>
-    <td colspan="3" align="center"><em>On a phone</em></td>
+    <td colspan="2" align="center"><em>On a phone</em></td>
   </tr>
 </table>
 
@@ -152,7 +148,7 @@ docker compose start
 
 Clearing the folder matters: an old `simmer.db-wal` or `simmer.db-shm` next to a restored database can damage it. If you set `SIMMER_SECRET_KEY`, the backup has no `secret.key`, so keep the same value in `.env`.
 
-**Recipe export is not a backup.** **Download recipes** (any signed-in user) gives a zip with `recipes.json` and the photos, meant for moving recipes to another Simmer. It leaves out accounts, ratings, cook logs, notes, the meal plan, shopping lists and AI settings. **Import recipes** reads such a zip and skips recipes whose title already exists. The person importing becomes the author.
+**Recipe export is not a backup.** **Download recipes** (any signed-in user) gives a zip with `recipes.json` and the photos, meant for moving recipes to another Simmer. It leaves out accounts, ratings, cook logs, notes, shopping lists and AI settings. **Import recipes** reads such a zip and skips recipes whose title already exists. The person importing becomes the author.
 
 ## Documentation
 
@@ -169,8 +165,6 @@ Clearing the folder matters: an old `simmer.db-wal` or `simmer.db-shm` next to a
 
 **Cook** opens a full-screen view with large text, ingredient checkboxes and one highlighted step at a time. The screen stays on while it is open, in browsers that support it.
 
-**Meal plan** shows a week from Monday to Sunday. Add a recipe or a note such as "Leftovers" to any day, change servings or move entries. Everyone who is signed in shares the same plan. **Add week to shopping list** puts the week's recipes on your own list.
-
 **Shopping list.** **Add to list** on a recipe adds it at the servings you are viewing. The list adds up ingredients across recipes, shows them in your preferred units, and lets you add your own items and tick things off. Each user has their own list.
 
 **Importing.** Use the import button next to **New**. Nothing is saved until you press Save. [docs/ai-import.md](docs/ai-import.md) explains what each kind of import sends to the AI provider.
@@ -184,7 +178,7 @@ Clearing the folder matters: an old `simmer.db-wal` or `simmer.db-shm` next to a
 | Add recipes | | ✓ | ✓ |
 | Edit or delete recipes | | own | all |
 | Rate, log cooking, keep private notes | | ✓ | ✓ |
-| Meal plan, shopping list, recipe export and import | | ✓ | ✓ |
+| Shopping list, recipe export and import | | ✓ | ✓ |
 | Import recipes and use Tidy up | | ✓ | ✓ |
 | Manage accounts and AI providers, full backup | | | ✓ |
 
