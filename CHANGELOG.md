@@ -2,11 +2,15 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.4.0 (2026-10-20)
 
 ### Changed
 
 - **Filters combine.** My Recipes and the tags in the sidebar now narrow the recipe list together instead of replacing each other. Click a tag to add it, click it again to remove it; picking several tags shows recipes that have all of them. All Recipes clears every filter. The API accepts `tag` more than once.
+
+### Fixed
+
+- Chrome no longer offers saved passwords in the header search field.
 
 ## 0.3.0 (2026-10-20)
 
