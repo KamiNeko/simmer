@@ -2,7 +2,7 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.6.0 (2026-10-20)
 
 ### Added
 
