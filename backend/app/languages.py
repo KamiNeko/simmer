@@ -1,4 +1,7 @@
-"""Languages an imported recipe can be translated into."""
+"""Languages recipes are detected in on import and can be translated into.
+
+Recipes are stored in English; other languages are translations made from it.
+"""
 
 from typing import Literal, get_args
 
@@ -20,6 +23,8 @@ LanguageCode = Literal[
     "ja",
     "ko",
     "zh",
+    "ru",
+    "uk",
 ]
 
 NAMES: dict[str, str] = {
@@ -40,6 +45,10 @@ NAMES: dict[str, str] = {
     "ja": "Japanese",
     "ko": "Korean",
     "zh": "Chinese",
+    "ru": "Russian",
+    "uk": "Ukrainian",
 }
+
+BASE = "en"
 
 assert set(NAMES) == set(get_args(LanguageCode))

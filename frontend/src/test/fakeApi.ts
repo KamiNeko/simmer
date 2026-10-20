@@ -8,7 +8,6 @@ export const USER: User = {
   display_name: "Alex",
   role: "admin",
   unit_system: "metric",
-  import_language: "",
   created_at: "2026-01-01T00:00:00Z",
 };
 
@@ -34,7 +33,10 @@ export function recipe(changes: Partial<Recipe> = {}): Recipe {
     my_rating: null,
     my_cooked_count: 0,
     my_last_cooked_at: null,
+    language: "en",
+    translation_outdated: false,
     source_url: null,
+    source_language: "",
     prep_minutes: null,
     cook_minutes: null,
     groups: [],
@@ -53,6 +55,7 @@ export function fakeApi(routes: Record<string, Handler | unknown>) {
   const answers: Record<string, Handler | unknown> = {
     "GET /api/auth/me": { user: USER, needs_setup: false },
     "GET /api/shopping": { recipes: [], extras: [], checked: [] },
+    "GET /api/languages": { base: "en", translations: [] },
     ...routes,
   };
   const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {

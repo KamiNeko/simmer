@@ -123,6 +123,8 @@ def apply_recipe(db: Session, recipe: Recipe, data: RecipeIn) -> None:
     recipe.prep_minutes = data.prep_minutes
     recipe.cook_minutes = data.cook_minutes
     recipe.total_minutes = data.total_minutes
+    if data.source_language is not None:
+        recipe.source_language = data.source_language
     recipe.tags = _resolve_tags(db, data.tags)
     recipe.groups = [
         IngredientGroup(

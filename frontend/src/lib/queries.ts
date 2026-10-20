@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "./api";
+import { BASE_LANGUAGE, type LanguageCode } from "./languages";
 
-/** One recipe by slug, shared by the header, detail, cooking view and editor. */
-export function useRecipe(slug: string | undefined) {
-  return useQuery({ queryKey: ["recipe", slug], queryFn: () => api.recipe(slug!), enabled: !!slug });
+/** One recipe by slug, shared by the header, detail, cooking view and editor; English unless a language is given. */
+export function useRecipe(slug: string | undefined, lang: LanguageCode = BASE_LANGUAGE) {
+  return useQuery({ queryKey: ["recipe", slug, lang], queryFn: () => api.recipe(slug!, lang), enabled: !!slug });
 }
 
 /**

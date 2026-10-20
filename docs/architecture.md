@@ -77,6 +77,8 @@ All tables are defined in `backend/app/models.py`.
 - **ratings** (one per user and recipe), **cook_log** (each time someone cooked a recipe) and **comments** (private notes, which can be ticked off as done). Together these are the journal.
 - **shopping_recipes**, **shopping_extras** and **shopping_checks**: each user's shopping list, as recipes with servings, typed-in items and ticked-off lines. The server stores these, and the browser adds up the ingredients (`lib/shopping.ts`).
 - **plan_entries**: entries of the meal plan that Simmer used to have. Nothing reads or writes them any more; the table stays so existing data survives.
+- **recipe_translations**: a recipe's text in another language (one row per recipe and language). `content` is JSON with the title, description, group names, ingredient names and notes, and steps, matched to the recipe by position; amounts and units always come from the English recipe. `source_hash` is the hash of the English text it was made from, so a later edit shows the translation as outdated (`translations.py`). The recipe's own `source_language` records the language an import translated it from.
+- **app_settings**: site-wide settings the admin changes in the app, as key and text value. `translation_languages` holds the languages recipes are translated into for sharing.
 - **llm_providers**: the configured AI providers, with the encrypted API key and its last 4 characters.
 - **recipe_search**: the FTS5 full-text index (see below). It is not a model.
 
@@ -86,7 +88,7 @@ Amounts are stored as entered. Unit conversion and servings scaling happen only 
 
 Search uses an SQLite FTS5 virtual table, `recipe_search`, with the columns title, description, ingredients and tags. It uses the `unicode61` tokenizer with `remove_diacritics 2`, so "creme" finds "crème". The table is created in migration `0002` and is excluded from Alembic autogenerate (`include_object` in `alembic/env.py`), so any change to it is a hand-written migration.
 
-`search.py` keeps it in sync: `index_recipe` rewrites a recipe's row whenever it is created, changed or imported, and `remove_recipe` deletes it. The row id is the recipe id.
+`search.py` keeps it in sync: `index_recipe` rewrites a recipe's row whenever it is created, changed, imported or translated, and `remove_recipe` deletes it. The row id is the recipe id. A row holds the English text and every translation of it, so searching in any language finds the recipe.
 
 `search_ids` runs a query in two passes:
 

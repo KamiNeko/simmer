@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { type AIProvider, api, type ImportRequest } from "@/lib/api";
 import { isBrowserPage, looksLikeHtml, READY, reducePage } from "@/lib/browserImport";
 import { useAuth } from "@/lib/auth";
-import { type LanguageCode, LANGUAGES } from "@/lib/languages";
 import { cn } from "@/lib/utils";
 
 import { PageFrame, Panel } from "./PageFrame";
@@ -24,8 +23,6 @@ export interface ImportState {
 }
 
 const DEFAULT = "default";
-// Radix Select items can't have an empty value.
-const KEEP = "keep";
 const MAX_PHOTOS = 6;
 
 type Mode = "url" | "text" | "photo";
@@ -112,33 +109,6 @@ export function ProviderSelect({
   );
 }
 
-/** The language to translate an import into, or "" to keep the recipe's language. */
-export function LanguageSelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: LanguageCode | "";
-  onChange: (value: LanguageCode | "") => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value || KEEP} onValueChange={(v) => onChange(v === KEEP ? "" : (v as LanguageCode))}>
-      <SelectTrigger className={className} aria-label="Language">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={KEEP}>Keep the recipe's language</SelectItem>
-        {Object.entries(LANGUAGES).map(([code, name]) => (
-          <SelectItem key={code} value={code}>
-            Translate to {name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
 export const providerParam = (value: string) => (value === DEFAULT ? undefined : value);
 
 export function ImportPage() {
@@ -153,7 +123,6 @@ export function ImportPage() {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [provider, setProvider] = useState(DEFAULT);
-  const [language, setLanguage] = useState<LanguageCode | "">(user?.import_language ?? "");
 
   const hasAI = (providers.data?.length ?? 0) > 0;
   // Pasted page source is read like a link, from the page's recipe data.
@@ -181,20 +150,18 @@ export function ImportPage() {
         html: reducePage(e.data.html),
         url: e.data.url,
         provider: providers.data.length ? undefined : "none",
-        translate_to: user?.import_language || undefined,
       });
     };
     window.addEventListener("message", receive);
     opener.postMessage(READY, "*");
     return () => window.removeEventListener("message", receive);
-  }, [fromBrowser, providers.isSuccess, providers.data, mutate, user?.import_language]);
+  }, [fromBrowser, providers.isSuccess, providers.data, mutate]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const source =
       mode === "url" ? { url: url.trim() } : pageSource ? { html: reducePage(text) } : mode === "text" ? { text } : { photos };
-    const translate = choice !== "none" && language ? { translate_to: language } : {};
-    const request: ImportRequest = { ...source, provider: providerParam(choice), ...translate };
+    const request: ImportRequest = { ...source, provider: providerParam(choice) };
     run.mutate(request);
   };
 
@@ -287,18 +254,10 @@ export function ImportPage() {
 
           <div className="flex flex-wrap items-end gap-3">
             {hasAI ? (
-              <>
-                <div className="space-y-2">
-                  <Label>AI provider</Label>
-                  <ProviderSelect providers={providers.data!} value={choice} onChange={setProvider} allowNone={pageData} className="w-64" />
-                </div>
-                {choice !== "none" && (
-                  <div className="space-y-2">
-                    <Label>Language</Label>
-                    <LanguageSelect value={language} onChange={setLanguage} className="w-56" />
-                  </div>
-                )}
-              </>
+              <div className="space-y-2">
+                <Label>AI provider</Label>
+                <ProviderSelect providers={providers.data!} value={choice} onChange={setProvider} allowNone={pageData} className="w-64" />
+              </div>
             ) : (
               // Text and photos have their own note: they can't be imported at all without AI.
               providers.isSuccess &&
@@ -314,6 +273,9 @@ export function ImportPage() {
               {run.isPending ? "Reading the recipe…" : "Import"}
             </Button>
           </div>
+          {choice !== "none" && !run.isPending && (
+            <p className="text-muted-foreground text-xs">Recipes are kept in English: the AI translates recipes written in another language.</p>
+          )}
           {run.isPending && choice !== "none" && (
             <p className="text-muted-foreground text-xs">The AI usually needs between a few seconds and a minute.</p>
           )}

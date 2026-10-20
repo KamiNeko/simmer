@@ -10,11 +10,14 @@ import { SortableItem, SortableList } from "@/components/editor/Sortable";
 import { TagInput } from "@/components/editor/TagInput";
 import { draftFromRecipe, emptyRow, type RecipeDraft, toInput, uid } from "@/components/editor/types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { LANGUAGES } from "@/lib/languages";
 import { renamedSlugs, useRecipe } from "@/lib/queries";
+import { useLanguages } from "@/lib/readingLanguage";
 
 import { type ImportState, ProviderSelect, providerParam } from "./ImportPage";
 
@@ -53,6 +56,8 @@ export function RecipeEditor() {
   const [showSource, setShowSource] = useState(!!imported);
   const [retryProvider, setRetryProvider] = useState("default");
   const hasAI = (providers.data?.length ?? 0) > 0;
+  const translatedInto = useLanguages()?.slice(1) ?? [];
+  const [updateTranslations, setUpdateTranslations] = useState(true);
 
   /** Replace the draft with an AI result, keeping the old one a click away. */
   const replaceDraft = (next: RecipeDraft, message: string) => {
@@ -82,7 +87,9 @@ export function RecipeEditor() {
 
   const save = useMutation({
     mutationFn: async (input: ReturnType<typeof toInput>["input"] & object) => {
-      let recipe = slug ? await api.updateRecipe(slug, input) : await api.createRecipe(input);
+      let recipe = slug
+        ? await api.updateRecipe(slug, input, updateTranslations)
+        : await api.createRecipe({ ...input, source_language: importInfo?.result.recipe.source_language });
       try {
         if (photo.kind === "replace") recipe = await api.uploadPhoto(recipe.slug, photo.file);
         if (photo.kind === "url") recipe = await api.photoFromUrl(recipe.slug, photo.url);
@@ -97,7 +104,9 @@ export function RecipeEditor() {
       client.invalidateQueries({ queryKey: ["tags"] });
       // The shopping list shows recipes too.
       client.invalidateQueries({ queryKey: ["shopping"] });
-      client.setQueryData(["recipe", recipe.slug], recipe);
+      client.setQueryData(["recipe", recipe.slug, "en"], recipe);
+      // Translations are made again after the save, so other languages are fetched afresh.
+      client.invalidateQueries({ predicate: ({ queryKey: [kind, key, lang] }) => kind === "recipe" && key === recipe.slug && lang !== "en" });
       toast.success(slug ? "Recipe saved" : "Recipe added");
       renamedSlugs.delete(recipe.slug);
       if (fromRecipe) {
@@ -199,6 +208,17 @@ export function RecipeEditor() {
               {reimport.isPending ? <Loader2 className="animate-spin" /> : <RotateCcw />} Import again
             </Button>
           </div>
+        )}
+        {slug && translatedInto.length > 0 && hasAI && (
+          <label className="flex cursor-pointer items-start gap-3 text-sm">
+            <Checkbox checked={updateTranslations} onChange={() => setUpdateTranslations(!updateTranslations)} className="mt-0.5" />
+            <span>
+              Update the {translatedInto.map((code) => LANGUAGES[code]).join(" and ")} translation after saving
+              <span className="text-muted-foreground block text-xs">
+                Untick it for small fixes. The translation then stays as it is and is marked as outdated until you translate it again on the recipe page.
+              </span>
+            </span>
+          </label>
         )}
         {errors.length > 0 && (
           <ul

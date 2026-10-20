@@ -6,6 +6,7 @@ import { handOverView, IngredientLine, useRecipeView, ViewControls } from "@/com
 import { Button } from "@/components/ui/button";
 import type { UnitSystem } from "@/lib/api";
 import { useRecipe } from "@/lib/queries";
+import { useReadingLanguage } from "@/lib/readingLanguage";
 import { convertText } from "@/lib/convert";
 import { cn, sectionHeading } from "@/lib/utils";
 
@@ -51,7 +52,7 @@ export function CookingView() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const fromRecipe = !!(useLocation().state as { fromRecipe?: boolean } | null)?.fromRecipe;
-  const recipe = useRecipe(slug);
+  const recipe = useRecipe(slug, useReadingLanguage());
   const servingsParam = Number(params.get("servings"));
   const unitsParam = params.get("units") as UnitSystem | null;
   const view = useRecipeView(recipe.data, {

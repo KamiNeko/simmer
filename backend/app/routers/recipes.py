@@ -1,13 +1,14 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 
 from .. import importer, photos, search
 from ..deps import DB, CurrentUser, OptionalUser
 from ..ingredient_parser import parse_ingredient
-from ..models import Recipe, ShoppingRecipe, Tag, User, recipe_tags
+from ..languages import BASE, LanguageCode
+from ..models import Recipe, RecipeTranslation, ShoppingRecipe, Tag, User, recipe_tags
 from ..recipe_service import (
     RECIPE_LOAD,
     apply_recipe,
@@ -20,7 +21,14 @@ from ..recipe_service import (
 )
 from ..schemas import ParseIn, PhotoFromUrl, RecipeIn, RecipeOut, RecipeSummary, TagOut
 from ..stats import RecipeStats, stats_for
+from ..translations import (
+    localize_detail,
+    localize_summary,
+    translation_languages,
+    translations_for,
+)
 from .shopping import forget_stale_checks
+from .translations import translate_later
 
 router = APIRouter(prefix="/api", tags=["recipes"])
 
@@ -49,8 +57,11 @@ def list_recipes(
     tag: Annotated[list[str] | None, Query()] = None,
     author: int | None = None,
     sort: str | None = None,
+    lang: LanguageCode | None = None,
 ) -> list[RecipeSummary]:
-    """List recipes having every given tag. Without a sort, searches rank by relevance."""
+    """List recipes having every given tag. Without a sort, searches rank by relevance.
+
+    With a language, recipes translated into it come back translated."""
     query = select(Recipe).options(*RECIPE_LOAD)
     ranked: list[int] | None = None
     if q and q.strip():
@@ -73,30 +84,58 @@ def list_recipes(
     elif ranked is not None and sort in (None, "relevance"):
         position = {rid: i for i, rid in enumerate(ranked)}
         recipes.sort(key=lambda r: position[r.id])
-    return [recipe_summary(r, user, stats[r.id]) for r in recipes]
+    summaries = [recipe_summary(r, user, stats[r.id]) for r in recipes]
+    if lang is None or lang == BASE:
+        return summaries
+    rows = translations_for(db, [r.id for r in recipes], lang)
+    return [
+        localize_summary(r, out, rows.get(r.id), lang)
+        for r, out in zip(recipes, summaries, strict=True)
+    ]
 
 
 @router.get("/recipes/{slug}", response_model=RecipeOut)
-def get_recipe(slug: str, user: OptionalUser, db: DB) -> RecipeOut:
-    """One recipe with its stats; visitors can read it too."""
-    return recipe_detail(db, get_recipe_by_slug(db, slug), user)
+def get_recipe(
+    slug: str, user: OptionalUser, db: DB, lang: LanguageCode | None = None
+) -> RecipeOut:
+    """One recipe with its stats; visitors can read it too. Translated when asked and stored."""
+    recipe = get_recipe_by_slug(db, slug)
+    out = recipe_detail(db, recipe, user)
+    if lang is None or lang == BASE:
+        return out
+    return localize_detail(
+        recipe, out, translations_for(db, [recipe.id], lang).get(recipe.id), lang
+    )
 
 
 @router.post("/recipes", response_model=RecipeOut, status_code=status.HTTP_201_CREATED)
-def create_recipe(data: RecipeIn, user: CurrentUser, db: DB) -> RecipeOut:
-    """Save a new recipe by the signed-in user."""
+def create_recipe(
+    data: RecipeIn, user: CurrentUser, db: DB, background: BackgroundTasks
+) -> RecipeOut:
+    """Save a new recipe by the signed-in user and translate it for sharing afterwards."""
     recipe = Recipe(slug=unique_slug(db, data.title), author_id=user.id)
     apply_recipe(db, recipe, data)
     db.add(recipe)
     db.flush()
     search.index_recipe(db, recipe)
     db.commit()
+    background.add_task(translate_later, [recipe.id], translation_languages(db))
     return recipe_detail(db, get_recipe_by_slug(db, recipe.slug), user)
 
 
 @router.put("/recipes/{slug}", response_model=RecipeOut)
-def update_recipe(slug: str, data: RecipeIn, user: CurrentUser, db: DB) -> RecipeOut:
-    """Save changes to a recipe the user may edit."""
+def update_recipe(
+    slug: str,
+    data: RecipeIn,
+    user: CurrentUser,
+    db: DB,
+    background: BackgroundTasks,
+    update_translations: bool = True,
+) -> RecipeOut:
+    """Save changes to a recipe the user may edit.
+
+    Its translations are made again afterwards unless update_translations is false; then
+    they show as outdated until someone translates the recipe again."""
     recipe = get_recipe_by_slug(db, slug)
     if not can_edit(user, recipe):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only edit your own recipes")
@@ -107,6 +146,12 @@ def update_recipe(slug: str, data: RecipeIn, user: CurrentUser, db: DB) -> Recip
     delete_orphan_tags(db)
     search.index_recipe(db, recipe)
     db.commit()
+    if update_translations:
+        existing = db.scalars(
+            select(RecipeTranslation.language).where(RecipeTranslation.recipe_id == recipe.id)
+        )
+        languages = list(dict.fromkeys([*translation_languages(db), *existing]))
+        background.add_task(translate_later, [recipe.id], languages)
     return recipe_detail(db, get_recipe_by_slug(db, recipe.slug), user)
 
 

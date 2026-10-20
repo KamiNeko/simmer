@@ -3,6 +3,7 @@
  * these functions only change how amounts and step text are shown.
  */
 import type { UnitSystem } from "./api";
+import type { LanguageCode } from "./languages";
 import { formatQuantity, unitLabel } from "./quantity";
 
 /** Millilitres per volume unit. */
@@ -21,7 +22,6 @@ export const ML: Record<string, number> = {
 export const GRAMS: Record<string, number> = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
 
 const DECIMAL_UNITS: Record<string, true> = { mg: true, g: true, kg: true, ml: true, l: true };
-const decimal = (value: number) => String(Math.round(value * 100) / 100);
 const SPOONS = new Set(["tsp", "tbsp"]);
 const US_UNITS = new Set(["tsp", "tbsp", "fl_oz", "cup", "pint", "quart", "oz", "lb"]);
 /** Spoon measures stay spoons below this weight (spices, sauces). */
@@ -127,9 +127,16 @@ export function convertAmount(ingredient: ConvertibleIngredient, system: UnitSys
   return unchanged;
 }
 
-/** "250 g", "1½ cups", or "" when there is no amount. */
-export function formatAmount(amount: Amount): string {
+/** Languages that write 1.5 rather than 1,5. */
+const DOT_DECIMAL = new Set<LanguageCode>(["en", "ja", "ko", "zh"]);
+
+/** "250 g", "1½ cups", or "" when there is no amount; in German "1,5 kg" and "2 EL". */
+export function formatAmount(amount: Amount, language: LanguageCode = "en"): string {
   const { quantity, max, unit } = amount;
+  const decimal = (value: number) => {
+    const text = String(Math.round(value * 100) / 100);
+    return DOT_DECIMAL.has(language) ? text : text.replace(".", ",");
+  };
   // Metric amounts read as decimals ("1.5 kg"), everything else as kitchen fractions.
   const value =
     unit && unit in DECIMAL_UNITS && quantity !== null
@@ -137,7 +144,7 @@ export function formatAmount(amount: Amount): string {
         ? `${decimal(quantity)}–${decimal(max)}`
         : decimal(quantity)
       : formatQuantity(quantity, max);
-  return [value, unitLabel(unit, quantity, max)].filter(Boolean).join(" ");
+  return [value, unitLabel(unit, quantity, max, language)].filter(Boolean).join(" ");
 }
 
 // Step text

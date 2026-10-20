@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Ingredient, Recipe, UnitSystem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import type { LanguageCode } from "@/lib/languages";
 import { convertAmount, formatAmount } from "@/lib/convert";
 import { formatNumber, formatQuantity, stepServings, unitLabel } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,8 @@ export function useRecipeView(recipe: Recipe | undefined, initial?: { servings?:
 
   const base = recipe?.servings ?? 1;
   const scale = servings ? servings / base : 1;
-  return { units, setUnits, servings: servings ?? base, setServings, scale, hasServings: !!recipe?.servings };
+  const language = recipe?.language ?? "en";
+  return { units, setUnits, servings: servings ?? base, setServings, scale, hasServings: !!recipe?.servings, language };
 }
 
 export type RecipeViewState = ReturnType<typeof useRecipeView>;
@@ -124,7 +126,8 @@ export function ViewControls({ view, large = false }: { view: RecipeViewState; l
   );
 }
 
-const asWritten = (i: Ingredient) => [formatQuantity(i.quantity, i.quantity_max), unitLabel(i.unit, i.quantity, i.quantity_max)].filter(Boolean).join(" ");
+const asWritten = (i: Ingredient, language: LanguageCode) =>
+  [formatQuantity(i.quantity, i.quantity_max), unitLabel(i.unit, i.quantity, i.quantity_max, language)].filter(Boolean).join(" ");
 
 export function IngredientLine({
   ingredient,
@@ -139,9 +142,9 @@ export function IngredientLine({
   onToggle: () => void;
   large?: boolean;
 }) {
-  const amount = formatAmount(convertAmount(ingredient, view.units, view.scale));
-  const original = asWritten(ingredient);
-  const converted = view.units !== "original" && amount !== formatAmount(convertAmount(ingredient, "original", view.scale));
+  const amount = formatAmount(convertAmount(ingredient, view.units, view.scale), view.language);
+  const original = asWritten(ingredient, view.language);
+  const converted = view.units !== "original" && amount !== formatAmount(convertAmount(ingredient, "original", view.scale), view.language);
   return (
     <li>
       <label className={cn("flex cursor-pointer items-start gap-3", large ? "py-2.5" : "py-1.5")}>

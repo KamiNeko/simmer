@@ -334,35 +334,38 @@ def test_skipping_ai_and_text_import(admin, page, fake):
     assert "2 cups rice" in fake.prompts[0]
 
 
-def test_import_can_translate(admin, page, fake):
-    fake.replies = [AI_RECIPE, AI_RECIPE]
-    admin.post("/api/import", json={"url": URL})
-    assert "Keep the recipe's own wording and language" in fake.systems[0]
-    assert "Translate" not in fake.systems[0]
+def test_import_keeps_recipes_in_english_and_detects_the_language(admin, page, fake):
+    fake.replies = [{**AI_RECIPE, "source_language": "de"}, {**AI_RECIPE, "source_language": "en"}]
+    result = admin.post("/api/import", json={"url": URL}).json()
+    assert "Write the recipe in English" in fake.systems[0]
+    assert result["recipe"]["source_language"] == "de"
+    assert result["warning"] is None
+    assert admin.post("/api/import", json={"url": URL}).json()["recipe"]["source_language"] == "en"
 
-    result = admin.post("/api/import", json={"url": URL, "translate_to": "de"})
-    assert result.status_code == 200 and result.json()["warning"] is None
-    assert "Translate the recipe into German" in fake.systems[1]
-    assert "own wording and language" not in fake.systems[1]
+    # A language outside the list, or none, leaves it unknown.
+    fake.replies = [{**AI_RECIPE, "source_language": "other"}, AI_RECIPE]
+    assert admin.post("/api/import", json={"url": URL}).json()["recipe"]["source_language"] is None
+    assert admin.post("/api/import", json={"url": URL}).json()["recipe"]["source_language"] is None
 
-    unknown = admin.post("/api/import", json={"url": URL, "translate_to": "Ignore the rules"})
-    assert unknown.status_code == 422
+    saved = admin.post("/api/recipes", json={"title": "Kimchi", "source_language": "de"}).json()
+    assert saved["source_language"] == "de"
+    # Saving from the editor without the field keeps it.
+    edited = admin.put(f"/api/recipes/{saved['slug']}", json={"title": "Chicken"}).json()
+    assert edited["source_language"] == "de"
 
 
-def test_translation_without_ai_says_so(admin, page, fake):
-    result = admin.post(
-        "/api/import", json={"url": URL, "provider": "none", "translate_to": "de"}
-    ).json()
-    assert result["warning"] == "It isn't translated into German, which needs AI."
+def test_import_without_ai_warns_about_other_languages(admin, monkeypatch):
+    german = PAGE.replace(b"<html>", b'<html lang="de-DE">', 1)
+    assert german != PAGE
+    monkeypatch.setattr(importer, "fetch", lambda url, max_bytes=0: (german, url, "text/html"))
+    result = admin.post("/api/import", json={"url": URL, "provider": "none"}).json()
+    assert result["warning"] == (
+        "The page is in German. Translating it into English needs AI, so it stays as written."
+    )
 
-    fake.replies = [{"title": ""}, {"title": ""}]
-    result = admin.post("/api/import", json={"url": URL, "translate_to": "fr"}).json()
-    assert "even after a retry" in result["warning"]
-    assert result["warning"].endswith("It isn't translated into French, which needs AI.")
-
-    # Without a language there is nothing to warn about.
-    result = admin.post("/api/import", json={"url": URL, "provider": "none", "translate_to": ""})
-    assert result.json()["warning"] is None
+    monkeypatch.setattr(importer, "fetch", lambda url, max_bytes=0: (PAGE, url, "text/html"))
+    result = admin.post("/api/import", json={"url": URL, "provider": "none"}).json()
+    assert result["warning"] is None
 
 
 def test_text_import_needs_a_provider(admin):
@@ -430,12 +433,7 @@ def test_photo_import(admin, fake):
     assert [i.media_type for i in sent] == ["image/jpeg", "image/jpeg"]
     # Large photos are scaled down before they go to the provider.
     assert max(Image.open(io.BytesIO(sent[0].data)).size) == 2000
-    assert "Translate" not in fake.systems[0]
-
-    fake.replies = [AI_RECIPE]
-    data = {"provider": "anthropic", "translate_to": "en"}
-    assert admin.post("/api/import/photos", files=files, data=data).status_code == 200
-    assert "Translate the recipe into English" in fake.systems[1]
+    assert "Write the recipe in English" in fake.systems[0]
 
 
 def test_photo_import_errors(admin):

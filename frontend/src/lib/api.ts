@@ -1,4 +1,4 @@
-import type { LanguageCode } from "./languages";
+import { BASE_LANGUAGE, type LanguageCode } from "./languages";
 
 export type Role = "admin" | "member";
 export type UnitSystem = "metric" | "us" | "original";
@@ -9,8 +9,6 @@ export interface User {
   display_name: string;
   role: Role;
   unit_system: UnitSystem;
-  /** The language imports are translated into, or "" to keep the recipe's language. */
-  import_language: LanguageCode | "";
   created_at: string;
 }
 
@@ -63,10 +61,16 @@ export interface RecipeSummary {
   my_rating: number | null;
   my_cooked_count: number;
   my_last_cooked_at: string | null;
+  /** The language the text is in: English, or the requested translation when there is one. */
+  language: LanguageCode;
+  /** A translation was asked for but is missing or was made from an older version. */
+  translation_outdated: boolean;
 }
 
 export interface Recipe extends RecipeSummary {
   source_url: string | null;
+  /** The language the recipe was in before import translated it to English, or "". */
+  source_language: LanguageCode | "";
   prep_minutes: number | null;
   cook_minutes: number | null;
   groups: IngredientGroup[];
@@ -84,6 +88,8 @@ export interface RecipeInput {
   tags: string[];
   groups: IngredientGroup[];
   steps: Step[];
+  /** Set by import: the language the AI found the recipe in. Left out, the stored one stays. */
+  source_language?: LanguageCode | "" | null;
 }
 
 export interface Comment {
@@ -132,8 +138,6 @@ export interface ImportRequest {
   photos?: File[];
   /** A provider kind, "none" to skip AI, or undefined for the default. */
   provider?: string;
-  /** A language for the AI to translate the recipe into. */
-  translate_to?: LanguageCode;
 }
 
 export interface ImportResult {
@@ -142,6 +146,22 @@ export interface ImportResult {
   provider: ProviderKind | null;
   model: string | null;
   warning: string | null;
+}
+
+export interface Languages {
+  base: LanguageCode;
+  translations: LanguageCode[];
+}
+
+export interface TranslationStatus {
+  languages: LanguageCode[];
+  /** Recipe and language pairs without an up-to-date translation. */
+  missing: number;
+  running: boolean;
+  done: number;
+  total: number;
+  failed: number;
+  error: string | null;
 }
 
 export interface ShoppingExtra {
@@ -213,7 +233,7 @@ export const api = {
     request<User>("POST", "/api/auth/setup", data),
   login: (username: string, password: string) => request<User>("POST", "/api/auth/login", { username, password }),
   logout: () => request<void>("POST", "/api/auth/logout"),
-  updateMe: (data: Partial<Pick<User, "display_name" | "unit_system" | "import_language">>) =>
+  updateMe: (data: Partial<Pick<User, "display_name" | "unit_system">>) =>
     request<User>("PATCH", "/api/auth/me", data),
   changePassword: (current_password: string, new_password: string) =>
     request<void>("POST", "/api/auth/password", { current_password, new_password }),
@@ -225,16 +245,25 @@ export const api = {
     request<User>("PATCH", `/api/users/${id}`, data),
   deleteUser: (id: number) => request<void>("DELETE", `/api/users/${id}`),
 
-  recipes: ({ tags = [], ...params }: { q?: string; tags?: string[]; author?: number; sort?: string }) => {
+  recipes: ({ tags = [], ...params }: { q?: string; tags?: string[]; author?: number; sort?: string; lang?: LanguageCode }) => {
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, String(value));
     for (const tag of tags) search.append("tag", tag);
     return request<RecipeSummary[]>("GET", `/api/recipes?${search}`);
   },
-  recipe: (slug: string) => request<Recipe>("GET", `/api/recipes/${encodeURIComponent(slug)}`),
+  recipe: (slug: string, lang: LanguageCode = BASE_LANGUAGE) =>
+    request<Recipe>("GET", `/api/recipes/${encodeURIComponent(slug)}${lang === BASE_LANGUAGE ? "" : `?lang=${lang}`}`),
   createRecipe: (data: RecipeInput) => request<Recipe>("POST", "/api/recipes", data),
-  updateRecipe: (slug: string, data: RecipeInput) =>
-    request<Recipe>("PUT", `/api/recipes/${encodeURIComponent(slug)}`, data),
+  /** Save changes; translations are made again afterwards unless updateTranslations is false. */
+  updateRecipe: (slug: string, data: RecipeInput, updateTranslations = true) =>
+    request<Recipe>("PUT", `/api/recipes/${encodeURIComponent(slug)}${updateTranslations ? "" : "?update_translations=false"}`, data),
+  translateRecipe: (slug: string, lang: LanguageCode) =>
+    request<Recipe>("POST", `/api/recipes/${encodeURIComponent(slug)}/translations/${lang}`),
+  languages: () => request<Languages>("GET", "/api/languages"),
+  translationStatus: () => request<TranslationStatus>("GET", "/api/admin/translations"),
+  saveTranslationLanguages: (languages: LanguageCode[]) =>
+    request<TranslationStatus>("PUT", "/api/admin/translations", { languages }),
+  fillTranslations: () => request<TranslationStatus>("POST", "/api/admin/translations/fill"),
   deleteRecipe: (slug: string) => request<void>("DELETE", `/api/recipes/${encodeURIComponent(slug)}`),
   uploadPhoto: (slug: string, file: File) => {
     const form = new FormData();
@@ -270,7 +299,6 @@ export const api = {
     const form = new FormData();
     for (const photo of photos) form.append("files", photo);
     if (data.provider) form.append("provider", data.provider);
-    if (data.translate_to) form.append("translate_to", data.translate_to);
     return request<ImportResult>("POST", "/api/import/photos", form);
   },
   tidy: (recipe: RecipeInput, provider?: string) => request<RecipeInput>("POST", "/api/ai/tidy", { recipe, provider }),

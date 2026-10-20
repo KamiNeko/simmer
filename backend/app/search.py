@@ -2,18 +2,34 @@
 
 import re
 
-from sqlalchemy import text
+from pydantic import ValidationError
+from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from .models import Recipe
+from .models import Recipe, RecipeTranslation
+from .schemas import TranslationContent
+
+
+def _translations(db: Session, recipe: Recipe) -> list[TranslationContent]:
+    rows = db.scalars(select(RecipeTranslation).where(RecipeTranslation.recipe_id == recipe.id))
+    contents = []
+    for row in rows:
+        try:
+            contents.append(TranslationContent.model_validate_json(row.content))
+        except ValidationError:
+            continue
+    return contents
 
 
 def index_recipe(db: Session, recipe: Recipe) -> None:
-    """Write the recipe's current text into the search index."""
-    ingredients = " ".join(
-        f"{i.name} {i.note}".strip() for g in recipe.groups for i in g.ingredients
-    )
+    """Write the recipe's current text, and its translations, into the search index."""
+    # Translations go in too, so "Hähnchen" finds a recipe stored as "chicken".
+    texts = [TranslationContent(title=recipe.title, description=recipe.description)]
+    texts += _translations(db, recipe)
+    names = [(i.name, i.note) for g in recipe.groups for i in g.ingredients]
+    names += [(i.name, i.note) for t in texts for g in t.groups for i in g.ingredients]
+    ingredients = " ".join(f"{name} {note}".strip() for name, note in names)
     db.execute(text("DELETE FROM recipe_search WHERE rowid = :id"), {"id": recipe.id})
     db.execute(
         text(
@@ -22,8 +38,8 @@ def index_recipe(db: Session, recipe: Recipe) -> None:
         ),
         {
             "id": recipe.id,
-            "title": recipe.title,
-            "description": recipe.description,
+            "title": " ".join(t.title for t in texts),
+            "description": " ".join(t.description for t in texts if t.description),
             "ingredients": ingredients,
             "tags": " ".join(t.name for t in recipe.tags),
         },

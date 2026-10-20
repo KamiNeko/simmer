@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, PlugZap, Trash2 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { Languages, Loader2, PlugZap, Trash2 } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type AIProvider, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { BASE_LANGUAGE, type LanguageCode, LANGUAGES } from "@/lib/languages";
 
 import { PageFrame, Panel } from "./PageFrame";
 
@@ -108,6 +110,79 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
   );
 }
 
+const TRANSLATABLE = (Object.keys(LANGUAGES) as LanguageCode[]).filter((code) => code !== BASE_LANGUAGE);
+
+/** The languages recipes are translated into for sharing, and a button to translate the ones still missing. */
+function TranslationsPanel({ hasAI }: { hasAI: boolean }) {
+  const client = useQueryClient();
+  const status = useQuery({
+    queryKey: ["admin-translations"],
+    queryFn: api.translationStatus,
+    // Follow the background job while it runs.
+    refetchInterval: (query) => (query.state.data?.running ? 3000 : false),
+  });
+  const updated = (data: Awaited<ReturnType<typeof api.translationStatus>>) => {
+    client.setQueryData(["admin-translations"], data);
+    client.invalidateQueries({ queryKey: ["languages"] });
+  };
+  const save = useMutation({ mutationFn: api.saveTranslationLanguages, onSuccess: updated });
+  const fill = useMutation({ mutationFn: api.fillTranslations, onSuccess: updated });
+  const data = status.data;
+  const running = !!data?.running;
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    // When the job finishes, recipes have new translations to show.
+    if (wasRunning.current && !running) {
+      client.invalidateQueries({ queryKey: ["recipes"] });
+      client.invalidateQueries({ queryKey: ["recipe"] });
+    }
+    wasRunning.current = running;
+  }, [running, client]);
+  if (!data) return null;
+
+  const toggle = (code: LanguageCode) =>
+    save.mutate(data.languages.includes(code) ? data.languages.filter((c) => c !== code) : [...data.languages, code]);
+
+  return (
+    <Panel
+      title="Translations for sharing"
+      description="Recipes are kept in English. Choose languages to share them in: new and edited recipes are then translated by the default AI provider, and readers can switch the language at the top of the page or open a shared link in it."
+    >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {TRANSLATABLE.map((code) => (
+          <label key={code} className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox checked={data.languages.includes(code)} onChange={() => toggle(code)} disabled={save.isPending} />
+            {LANGUAGES[code]}
+          </label>
+        ))}
+      </div>
+      {data.languages.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 border-t pt-4 text-sm">
+          <Languages className="text-muted-foreground size-4" />
+          <span className="min-w-0 flex-1">
+            {data.running
+              ? `Translating… ${data.done} of ${data.total} done.`
+              : data.missing === 0
+                ? "Every recipe is translated."
+                : `${data.missing} ${data.missing === 1 ? "translation is" : "translations are"} missing or outdated.`}
+          </span>
+          {data.missing > 0 && hasAI && (
+            <Button size="sm" variant="outline" onClick={() => fill.mutate()} disabled={data.running || fill.isPending}>
+              {data.running ? <Loader2 className="animate-spin" /> : <Languages />} Translate now
+            </Button>
+          )}
+        </div>
+      )}
+      {!data.running && data.failed > 0 && (
+        <p className="text-destructive text-sm">
+          {data.failed} {data.failed === 1 ? "translation" : "translations"} failed{data.error ? `: ${data.error}` : ""}.
+        </p>
+      )}
+      {!hasAI && data.languages.length > 0 && <p className="text-muted-foreground text-sm">Translating needs an AI provider. Set one up above.</p>}
+    </Panel>
+  );
+}
+
 export function AIProvidersPage() {
   const { isAdmin } = useAuth();
   const providers = useQuery({ queryKey: ["admin-ai-providers"], queryFn: api.adminProviders, enabled: isAdmin });
@@ -121,6 +196,7 @@ export function AIProvidersPage() {
         <p className="text-muted-foreground text-sm">Without a provider, links still import from the page's recipe data, just without grouping fixes and densities.</p>
       </Panel>
       {providers.data?.map((p) => <ProviderCard key={`${p.kind}-${p.configured}-${p.model}`} provider={p} />)}
+      {providers.data && <TranslationsPanel hasAI={providers.data.some((p) => p.configured)} />}
     </PageFrame>
   );
 }

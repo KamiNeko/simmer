@@ -1,3 +1,5 @@
+import type { LanguageCode } from "./languages";
+
 const FRACTIONS: [number, string][] = [
   [1 / 8, "⅛"],
   [1 / 4, "¼"],
@@ -96,10 +98,29 @@ const PLURALS: Record<string, string> = {
   handful: "handfuls",
 };
 
-/** Display label for a unit code, pluralised for amounts above one ("2 cups"). */
-export function unitLabel(unit: string | null, quantity: number | null = null, max: number | null = null): string {
+/** Unit names in the languages recipes are translated into, as [singular, plural]; units left out keep their code. */
+const TRANSLATED_UNITS: Partial<Record<LanguageCode, Record<string, [string, string?]>>> = {
+  de: {
+    tsp: ["TL"],
+    tbsp: ["EL"],
+    cup: ["Tasse", "Tassen"],
+    pinch: ["Prise", "Prisen"],
+    clove: ["Zehe", "Zehen"],
+    can: ["Dose", "Dosen"],
+    piece: ["Stück"],
+    slice: ["Scheibe", "Scheiben"],
+    bunch: ["Bund"],
+    stalk: ["Stange", "Stangen"],
+    handful: ["Handvoll"],
+  },
+};
+
+/** Display label for a unit code, pluralised for amounts above one ("2 cups"), in the recipe's language. */
+export function unitLabel(unit: string | null, quantity: number | null = null, max: number | null = null, language: LanguageCode = "en"): string {
   if (!unit) return "";
   const amount = max ?? quantity;
+  const translated = TRANSLATED_UNITS[language]?.[unit];
+  if (translated) return amount !== null && amount > 1 && translated[1] ? translated[1] : translated[0];
   if (amount !== null && amount > 1 && unit in PLURALS) return PLURALS[unit];
   return UNIT_LABELS[unit] ?? unit;
 }

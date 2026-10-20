@@ -24,7 +24,6 @@ class UserOut(ORMModel):
     display_name: str
     role: Literal["admin", "member"]
     unit_system: Literal["metric", "us", "original"]
-    import_language: LanguageCode | Literal[""]
     created_at: UTCDateTime
 
 
@@ -52,7 +51,6 @@ class UserUpdate(BaseModel):
 class MeUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=128)
     unit_system: Literal["metric", "us", "original"] | None = None
-    import_language: LanguageCode | Literal[""] | None = None
 
 
 class PasswordChange(BaseModel):
@@ -146,6 +144,8 @@ class RecipeIn(BaseModel):
     tags: list[str] = Field(default=[], max_length=50)
     groups: list[GroupIn] = Field(default=[], max_length=50)
     steps: list[StepIn] = Field(default=[], max_length=200)
+    # The language the recipe was written in before import translated it; None keeps it.
+    source_language: LanguageCode | Literal[""] | None = None
 
     @field_validator("tags")
     @classmethod
@@ -180,6 +180,10 @@ class RecipeSummary(ORMModel):
     created_at: UTCDateTime
     updated_at: UTCDateTime
     can_edit: bool = False
+    # The language the text is in: English, or the requested translation when there is one.
+    language: str = "en"
+    # True when a translation was asked for but is missing or made from an older version.
+    translation_outdated: bool = False
     # Public totals across all users.
     avg_rating: float | None = None
     rating_count: int = 0
@@ -192,6 +196,7 @@ class RecipeSummary(ORMModel):
 
 class RecipeOut(RecipeSummary):
     source_url: str | None
+    source_language: str = ""
     prep_minutes: int | None
     cook_minutes: int | None
     groups: list[GroupOut]
@@ -278,8 +283,6 @@ class ImportIn(BaseModel):
     html: str | None = Field(default=None, max_length=1_500_000)
     # A provider kind, "none" to skip AI, or empty for the default provider.
     provider: str | None = None
-    # A language to translate the recipe into, or empty to keep its language.
-    translate_to: LanguageCode | Literal[""] | None = None
 
 
 class ImportOut(BaseModel):
@@ -297,6 +300,55 @@ class TidyIn(BaseModel):
 
 class PhotoFromUrl(BaseModel):
     url: HttpUrl
+
+
+# Translations
+
+
+class TranslatedIngredient(BaseModel):
+    name: str = Field(max_length=300)
+    note: str = Field(default="", max_length=500)
+
+
+class TranslatedGroup(BaseModel):
+    name: str = Field(default="", max_length=200)
+    ingredients: list[TranslatedIngredient] = Field(default=[], max_length=200)
+
+
+class TranslatedStep(BaseModel):
+    section: str = Field(default="", max_length=200)
+    text: str = Field(max_length=20_000)
+
+
+class TranslationContent(BaseModel):
+    """A recipe's text in one language, matching its groups, ingredients and steps by position."""
+
+    title: str = Field(max_length=300)
+    description: str = Field(default="", max_length=30_000)
+    groups: list[TranslatedGroup] = Field(default=[], max_length=50)
+    steps: list[TranslatedStep] = Field(default=[], max_length=200)
+
+
+class LanguagesOut(BaseModel):
+    # The language recipes are stored in.
+    base: str
+    # Languages recipes are translated into for sharing.
+    translations: list[LanguageCode]
+
+
+class TranslationLanguagesIn(BaseModel):
+    languages: list[LanguageCode] = Field(max_length=10)
+
+
+class TranslationStatus(BaseModel):
+    languages: list[LanguageCode]
+    # Recipe and language pairs without an up-to-date translation.
+    missing: int
+    running: bool
+    done: int = 0
+    total: int = 0
+    failed: int = 0
+    error: str | None = None
 
 
 # Shopping list

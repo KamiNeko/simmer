@@ -38,8 +38,6 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(16), default=Role.member)
     unit_system: Mapped[str] = mapped_column(String(16), default="metric")
-    # A language code imports are translated into, or empty to keep the recipe's language.
-    import_language: Mapped[str] = mapped_column(String(16), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     @property
@@ -91,6 +89,9 @@ class Recipe(Base):
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     photo: Mapped[str | None] = mapped_column(String(200))
+    # The language the recipe was written in before import translated it to English;
+    # empty when unknown.
+    source_language: Mapped[str] = mapped_column(String(16), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -151,6 +152,35 @@ class Step(Base):
     text: Mapped[str] = mapped_column(Text)
 
     recipe: Mapped[Recipe] = relationship(back_populates="steps")
+
+
+class RecipeTranslation(Base):
+    """A recipe's text in another language, made by AI from the English recipe.
+
+    content mirrors the recipe's groups, ingredients and steps by position; source_hash is
+    the hash of the English text it was made from, so a changed recipe shows as outdated.
+    """
+
+    __tablename__ = "recipe_translations"
+    __table_args__ = (UniqueConstraint("recipe_id", "language"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id", ondelete="CASCADE"), index=True)
+    language: Mapped[str] = mapped_column(String(16))
+    content: Mapped[str] = mapped_column(Text)
+    source_hash: Mapped[str] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class AppSetting(Base):
+    """A site-wide setting the admin changes in the app, stored as text."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
 
 
 class Rating(Base):

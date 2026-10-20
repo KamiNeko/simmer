@@ -1,4 +1,4 @@
-import { Archive, ChevronRight, Info, LogIn, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun, Users } from "lucide-react";
+import { Archive, Check, ChevronRight, Info, Languages, LogIn, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -14,13 +14,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { NATIVE_NAMES } from "@/lib/languages";
 import { useRecipe } from "@/lib/queries";
+import { setReadingLanguage, useLanguages, useReadingLanguage } from "@/lib/readingLanguage";
 import { useTheme } from "@/lib/theme";
 
 function useCrumb(): string | null {
   const { pathname } = useLocation();
   const { slug } = useParams();
-  const recipe = useRecipe(slug);
+  const recipe = useRecipe(slug, useReadingLanguage());
   if (pathname === "/new") return "New recipe";
   if (pathname === "/settings") return "Settings";
   if (pathname === "/admin/users") return "Users";
@@ -30,6 +32,40 @@ function useCrumb(): string | null {
   if (pathname === "/backup") return "Export & backup";
   if (slug) return recipe.data?.title ?? null;
   return null;
+}
+
+/** The switch readers choose the language of recipes with; only there when recipes are translated. */
+function LanguageSwitch() {
+  const languages = useLanguages();
+  const current = useReadingLanguage();
+  const [params, setParams] = useSearchParams();
+  if (!languages || languages.length < 2) return null;
+  const choose = (code: (typeof languages)[number]) => {
+    setReadingLanguage(code);
+    // A shared link's ?lang would otherwise keep overriding the choice.
+    if (params.has("lang")) {
+      const next = new URLSearchParams(params);
+      next.delete("lang");
+      setParams(next, { replace: true });
+    }
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="max-sm:px-2" aria-label={`Recipe language: ${NATIVE_NAMES[current]}`} title="Recipe language">
+          <Languages /> <span className="hidden font-mono text-xs uppercase sm:inline">{current}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Recipe language</DropdownMenuLabel>
+        {languages.map((code) => (
+          <DropdownMenuItem key={code} onSelect={() => choose(code)}>
+            <Check className={code === current ? "" : "invisible"} /> {NATIVE_NAMES[code]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuOpen?: boolean }) {
@@ -95,7 +131,7 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
       </nav>
 
       <div className="ml-auto flex items-center gap-2">
-        <label className="bg-background/60 text-muted-foreground focus-within:border-ring flex h-9 w-44 items-center gap-2 rounded-lg border px-3 text-sm sm:w-72">
+        <label className="bg-background/60 text-muted-foreground focus-within:border-ring flex h-9 w-36 items-center gap-2 rounded-lg border px-3 text-sm min-[400px]:w-44 sm:w-72">
           <Search className="size-4 shrink-0" />
           <input
             ref={searchRef}
@@ -115,6 +151,8 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
           />
           <kbd className="hidden rounded border px-1.5 font-mono text-[10px] sm:block">Ctrl K</kbd>
         </label>
+
+        <LanguageSwitch />
 
         <Button variant="ghost" size="icon-sm" onClick={toggle} aria-label="Toggle dark mode" className="text-primary">
           {dark ? <Moon /> : <Sun />}
