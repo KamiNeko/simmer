@@ -2,10 +2,16 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.3.0 (2026-10-20)
+
+### Removed
+
+- **Meal plan.** The Meal plan page, the Plan button on recipes and the `/api/plan` endpoints are gone. The shopping list works as before. Existing meal plan entries stay in the database but are no longer shown.
+
+### Added
 
 - **About Simmer** in the account menu shows the version and the commit the Docker image was built from, with links to GitHub, the changelog and the issue tracker. Include the version when you report a bug.
-- **Removed the meal plan.** The Meal plan page, the Plan button on recipes and the `/api/plan` endpoints are gone. The shopping list works as before. Existing meal plan entries stay in the database but are no longer shown.
+- The import page explains step by step how to add the **Save to Simmer** bookmark and use it.
 
 ## 0.2.0 (2026-10-19)
 
