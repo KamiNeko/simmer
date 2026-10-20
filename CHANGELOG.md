@@ -2,6 +2,19 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- **Translations for sharing.** Recipes stay in English, and an admin picks languages to share them in under **AI providers**, such as German. New and edited recipes are translated in the background and stored, and **Translate now** fills in the rest. Readers, including visitors, switch the language at the top of the page, and **Share** on a recipe copies a link that opens in a chosen language (`?lang=de`). Translated recipes show amounts in metric with German unit names, and search finds recipes by their translated words. When editing, untick **Update the translation** for small fixes: the translation is then marked as outdated until you translate it again. See [AI import](docs/ai-import.md#translations-for-sharing).
+- **Language detection on import.** The AI notices the language a recipe is written in and translates it into English, and the recipe page says what language it was originally in. Imports without AI warn when the page is in another language.
+- Russian and Ukrainian join the language list.
+
+### Changed
+
+- AI imports always store recipes in English. The **Language of imported recipes** setting and the language choice on the import screen from 0.5.0 are gone; the `translate_to` import field and the `import_language` account field were removed from the API.
+- The recipe export includes each recipe's translations and original language.
+
 ## 0.5.0 (2026-10-20)
 
 ### Added

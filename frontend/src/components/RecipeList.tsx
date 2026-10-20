@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { BASE_LANGUAGE } from "@/lib/languages";
+import { useReadingLanguage } from "@/lib/readingLanguage";
 import { cn, formatMinutes, relativeDate } from "@/lib/utils";
 
 const SORTS = [
@@ -30,10 +32,11 @@ export function RecipeList() {
   const mine = params.get("mine") === "1" && !!user;
   const sortParam = params.get("sort") ?? undefined;
   const sort = sortParam ?? (q ? "relevance" : "updated");
+  const lang = useReadingLanguage();
 
   const recipes = useQuery({
-    queryKey: ["recipes", { q, tags, mine, sort: sortParam, userId: user?.id }],
-    queryFn: () => api.recipes({ q, tags, sort: sortParam, author: mine ? user?.id : undefined }),
+    queryKey: ["recipes", { q, tags, mine, sort: sortParam, userId: user?.id, lang }],
+    queryFn: () => api.recipes({ q, tags, sort: sortParam, author: mine ? user?.id : undefined, lang: lang === BASE_LANGUAGE ? undefined : lang }),
   });
 
   const visible = useMemo(() => {

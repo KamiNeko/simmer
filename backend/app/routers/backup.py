@@ -20,9 +20,12 @@ from .. import photos, search
 from ..config import get_settings
 from ..crypto import KEY_FILE
 from ..deps import DB, AdminUser, CurrentUser
-from ..models import Recipe
+from ..languages import BASE
+from ..languages import NAMES as LANGUAGE_NAMES
+from ..models import Recipe, RecipeTranslation
 from ..recipe_service import RECIPE_LOAD, apply_recipe, unique_slug
-from ..schemas import ImportedRecipe, ImportFileResult, RecipeIn
+from ..schemas import ImportedRecipe, ImportFileResult, RecipeIn, TranslationContent
+from ..translations import save_translation
 
 router = APIRouter(prefix="/api", tags=["backup"])
 
@@ -54,7 +57,7 @@ def _zip_response(build, prefix: str) -> FileResponse:
     )
 
 
-def _recipe_json(recipe: Recipe) -> dict:
+def _recipe_json(recipe: Recipe, translations: list[RecipeTranslation]) -> dict:
     data = RecipeIn(
         title=recipe.title,
         description=recipe.description,
@@ -83,10 +86,14 @@ def _recipe_json(recipe: Recipe) -> dict:
             for g in recipe.groups
         ],
         steps=[{"section": s.section, "text": s.text} for s in recipe.steps],
+        source_language=recipe.source_language,
     ).model_dump(mode="json")
     data["author"] = recipe.author.display_name if recipe.author else None
     data["created_at"] = recipe.created_at.isoformat()
     data["photo"] = f"photos/{recipe.slug}.webp" if recipe.photo else None
+    data["translations"] = {
+        t.language: {"source_hash": t.source_hash, **json.loads(t.content)} for t in translations
+    }
     return data
 
 
@@ -94,6 +101,9 @@ def _recipe_json(recipe: Recipe) -> dict:
 def export_recipes(user: CurrentUser, db: DB) -> FileResponse:
     """All recipes as recipes.json plus their photos, ready to import into another Simmer."""
     recipes = list(db.scalars(select(Recipe).order_by(Recipe.title).options(*RECIPE_LOAD)))
+    translations: dict[int, list[RecipeTranslation]] = {}
+    for row in db.scalars(select(RecipeTranslation).order_by(RecipeTranslation.language)):
+        translations.setdefault(row.recipe_id, []).append(row)
 
     def build(archive: zipfile.ZipFile) -> None:
         folder = photos.photos_dir()
@@ -105,7 +115,7 @@ def export_recipes(user: CurrentUser, db: DB) -> FileResponse:
             "format": FORMAT,
             "version": VERSION,
             "exported_at": datetime.now(UTC).isoformat(),
-            "recipes": [_recipe_json(r) for r in recipes],
+            "recipes": [_recipe_json(r, translations.get(r.id, [])) for r in recipes],
         }
         archive.writestr("recipes.json", json.dumps(document, ensure_ascii=False, indent=2))
 
@@ -174,6 +184,24 @@ def _created_at(value: object) -> datetime | None:
     return created if created.tzinfo else created.replace(tzinfo=UTC)
 
 
+def _import_translations(db: DB, recipe: Recipe, translations: object) -> None:
+    """Store an exported recipe's translations; ones that can't be read are left out."""
+    if not isinstance(translations, dict):
+        return
+    for language, data in translations.items():
+        if language not in LANGUAGE_NAMES or language == BASE or not isinstance(data, dict):
+            continue
+        try:
+            content = TranslationContent.model_validate(data)
+        except ValidationError:
+            continue
+        made_from = data.get("source_hash")
+        save_translation(
+            db, recipe, language, content, made_from[:64] if isinstance(made_from, str) else ""
+        )
+    db.flush()
+
+
 @router.post("/import/file", response_model=ImportFileResult)
 def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult:
     """Import recipes from a Simmer export. Recipes whose title is already here are skipped."""
@@ -222,6 +250,7 @@ def import_file(file: UploadFile, user: CurrentUser, db: DB) -> ImportFileResult
             # A damaged photo shouldn't stop the recipe itself from coming in.
             with contextlib.suppress(photos.InvalidImage):
                 recipe.photo = photos.save_photo(photo, recipe.id, MAX_IMPORT_PIXELS)
+        _import_translations(db, recipe, entry.get("translations"))
         search.index_recipe(db, recipe)
         result.imported.append(ImportedRecipe(slug=recipe.slug, title=recipe.title))
         if len(result.imported) % COMMIT_EVERY == 0:

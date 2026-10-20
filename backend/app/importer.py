@@ -137,6 +137,8 @@ class PageData:
     text: str = ""
     image_url: str | None = None
     title: str = ""
+    # The page's own language code from <html lang>, such as "de"; empty when not given.
+    language: str = ""
 
 
 def _is_recipe(node: dict[str, Any]) -> bool:
@@ -232,6 +234,12 @@ def page_text(soup: BeautifulSoup) -> str:
     return text[:MAX_TEXT_CHARS]
 
 
+def _page_language(soup: BeautifulSoup) -> str:
+    html = soup.find("html")
+    lang = html.get("lang") if html else None
+    return lang.split("-")[0].strip().lower() if isinstance(lang, str) else ""
+
+
 def parse_page(body: bytes, url: str) -> PageData:
     """Read the recipe data, ingredient headings, image and text from a page."""
     soup = BeautifulSoup(body, "html.parser")
@@ -243,6 +251,7 @@ def parse_page(body: bytes, url: str) -> PageData:
         ingredient_groups=find_ingredient_groups(soup),
         image_url=_image_url(recipe, soup, url),
         title=title_tag.get_text().strip() if title_tag else "",
+        language=_page_language(soup),
     )
     data.text = page_text(soup)
     return data

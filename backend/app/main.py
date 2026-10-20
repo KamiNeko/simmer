@@ -18,7 +18,7 @@ from .deps import CurrentUser
 from .hardening import HardeningMiddleware
 from .migrations import upgrade_database
 from .models import IngredientGroup, Recipe, Role, User
-from .routers import ai, auth, backup, journal, recipes, shopping, users
+from .routers import ai, auth, backup, journal, recipes, shopping, translations, users
 from .security import hash_password
 
 
@@ -69,6 +69,7 @@ app.include_router(journal.router)
 app.include_router(ai.router)
 app.include_router(shopping.router)
 app.include_router(backup.router)
+app.include_router(translations.router)
 
 
 @app.get("/media/photos/{name}", include_in_schema=False)

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, ChefHat, Check, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, ShoppingBasket, Timer, Trash2, User, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChefHat, Check, Clock, CookingPot, ExternalLink, Hash, Languages, Loader2, MoreHorizontal, Pencil, RefreshCw, ShoppingBasket, Timer, Trash2, User, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -16,11 +16,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CookBar, NotesSection } from "@/components/Journal";
 import { IngredientLine, useHandedOverView, useRecipeView, ViewControls } from "@/components/RecipeView";
+import { ShareMenu } from "@/components/ShareMenu";
 import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { api } from "@/lib/api";
+import { api, type Recipe } from "@/lib/api";
+import { BASE_LANGUAGE, LANGUAGES, type LanguageCode } from "@/lib/languages";
 import { renamedSlugs, useRecipe } from "@/lib/queries";
+import { useReadingLanguage } from "@/lib/readingLanguage";
 import { useAuth } from "@/lib/auth";
 import { convertText } from "@/lib/convert";
 import { formatNumber } from "@/lib/quantity";
@@ -35,6 +38,38 @@ function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
+/** Says when the recipe isn't shown in the reader's language, or its translation is outdated, with a button to translate it. */
+function TranslationNotice({ recipe, language }: { recipe: Recipe; language: LanguageCode }) {
+  const { user } = useAuth();
+  const client = useQueryClient();
+  const translate = useMutation({
+    mutationFn: () => api.translateRecipe(recipe.slug, language),
+    onSuccess: (translated) => {
+      client.setQueryData(["recipe", recipe.slug, language], translated);
+      client.invalidateQueries({ queryKey: ["recipes"] });
+      toast.success(`Translated into ${LANGUAGES[language]}`);
+    },
+  });
+  if (language === BASE_LANGUAGE || (recipe.language === language && !recipe.translation_outdated)) return null;
+  const name = LANGUAGES[language];
+  const message =
+    recipe.language === language
+      ? `This ${name} translation was made from an older version of the recipe.`
+      : `This recipe isn't translated into ${name} yet, so it shows in English.`;
+  return (
+    <div className="bg-muted/60 text-muted-foreground mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 text-sm">
+      <Languages className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1">{message}</span>
+      {user && (
+        <Button size="sm" variant="outline" onClick={() => translate.mutate()} disabled={translate.isPending}>
+          {translate.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+          {translate.isPending ? "Translating…" : recipe.language === language ? "Translate again" : "Translate now"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function RecipeDetail() {
   const { slug } = useParams();
   const { search } = useLocation();
@@ -43,7 +78,8 @@ export function RecipeDetail() {
   const { user } = useAuth();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const recipe = useRecipe(slug);
+  const language = useReadingLanguage();
+  const recipe = useRecipe(slug, language);
   const view = useRecipeView(recipe.data, useHandedOverView(slug));
   const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
   const listed = shopping.data?.recipes.find((e) => e.recipe.slug === slug);
@@ -108,13 +144,16 @@ export function RecipeDetail() {
             </Link>
           ))}
         </div>
-        {r.can_edit && (
-          <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
+          <ShareMenu slug={r.slug} />
+          {r.can_edit && (
             <Button variant="outline" size="sm" asChild>
               <Link to={`/recipes/${r.slug}/edit${search}`} state={{ fromRecipe: true }}>
                 <Pencil /> Edit
               </Link>
             </Button>
+          )}
+          {r.can_edit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon-sm" aria-label="More actions">
@@ -127,8 +166,8 @@ export function RecipeDetail() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="mx-auto max-w-5xl px-5 py-8 md:px-12">
@@ -156,7 +195,11 @@ export function RecipeDetail() {
               <Meta icon={<ExternalLink />}>{new URL(r.source_url).hostname.replace(/^www\./, "")}</Meta>
             </a>
           )}
+          {r.source_language && r.source_language !== BASE_LANGUAGE && r.source_language !== r.language && (
+            <Meta icon={<Languages />}>Originally in {LANGUAGES[r.source_language]}</Meta>
+          )}
         </div>
+        <TranslationNotice recipe={r} language={language} />
         {r.photo_url && (
           <img src={r.photo_url} alt="" className="mt-6 max-h-[420px] w-full rounded-xl border object-cover" />
         )}

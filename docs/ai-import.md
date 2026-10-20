@@ -19,11 +19,24 @@ Only admins can do this.
 
 The Simmer server talks to the provider directly, so it needs outbound HTTPS to the provider's API. Each request may take up to 180 seconds. See the [reverse proxy notes](self-hosting.md#reverse-proxy) for the proxy timeout this needs.
 
-## Translating imports
+## Recipes are kept in English
 
-The AI can translate a recipe while importing it, so a collection stays in one language even when recipes come from sites in other languages. Pick a language under **Language of imported recipes** in **Settings**. It is off by default, so recipes keep their language. The import screen shows the chosen language next to the provider and can change it for a single import.
+Simmer keeps every recipe in English. When an AI import finds a recipe written in another language, it translates it into English: title, description, group names, ingredient names and notes, steps and tags. Amounts and units stay as they are, and each ingredient's source line in the editor keeps the original wording, so you can check the translation before saving. The recipe page then says which language the recipe was originally in.
 
-The title, description, group names, ingredient names and notes, steps and tags are translated. Amounts and units stay as they are, and each ingredient's source line in the editor keeps the original wording, so you can check the translation before saving. Imports without AI are never translated, and the draft says so.
+Imports without AI can't translate. When the page says it is in another language, the draft warns that the recipe stays as written.
+
+## Translations for sharing
+
+To share recipes with people who read another language, an admin picks languages under **Translations for sharing** at the bottom of **AI providers**. From then on:
+
+- New recipes are translated into those languages right after they are saved, in the background, by the default provider. **Translate now** on the same page translates every recipe that has no up-to-date translation yet.
+- Readers, including visitors without an account, switch the language with the language button at the top of the page. The recipe list, search, recipe pages and the cooking view then show the translation. Search finds recipes by their translated words, too.
+- **Share** on a recipe page copies a link in the language you pick, such as `/recipes/gochujang-chicken?lang=de`. Whoever opens it reads in that language and keeps it while they browse. Over plain http browsers don't allow copying, so Simmer shows the link to copy by hand.
+- Ingredient amounts come from the English recipe and show in the reader's units (metric unless they choose otherwise), with unit names in German ("2 EL", "1 Zehe") and a decimal comma. Measurements written inside the steps, like "350°F" or "1 cup", are converted to metric by the translation.
+- When you edit a recipe, **Update the ... translation after saving** is ticked. Untick it for a small fix: the translation stays and is marked as made from an older version. **Translate again** on the recipe page brings it up to date. A translation that no longer lines up with the recipe, because steps or ingredients were added or removed, falls back to English until it is translated again.
+- A recipe without a translation in the reader's language shows in English, with a **Translate now** button for signed-in users.
+
+Tags are not translated. Translations are stored with the recipe, so each one is made once, and they are part of the recipe export.
 
 ## Without a provider
 
@@ -31,7 +44,7 @@ Links still work: Simmer reads the recipe data most recipe sites embed (schema.o
 
 ## What leaves your server
 
-Simmer sends only what the import needs, to the one provider chosen for that import. Nothing is sent to a provider when you edit or view recipes, and nothing is sent anywhere when no provider is used.
+Simmer sends only what the import needs, to the one provider chosen for that import. When languages are chosen under **Translations for sharing**, the text of new and edited recipes also goes to the default provider to be translated. Nothing is sent to a provider when you view recipes, and nothing is sent anywhere when no provider is used.
 
 | Action | Sent to the provider |
 | --- | --- |
@@ -39,9 +52,10 @@ Simmer sends only what the import needs, to the one provider chosen for that imp
 | Import pasted text | The text exactly as pasted. |
 | Import photos | Each photo, re-encoded by Simmer as a JPEG of at most 2000 pixels on the long side. Camera metadata such as location is not included. Up to 6 photos per import. |
 | Tidy up | The recipe in the editor as JSON: title, description, servings, times, tags, ingredient groups and steps. The source link is left out. The title and description you typed are kept as they are. |
+| Translate a recipe | The English recipe's title, description, group names, ingredient names and notes, step sections and steps as JSON. Amounts, units, tags, the source link and photos are left out. |
 | Test connection | A fixed health-check prompt. No recipe data. |
 
-Every request also carries Simmer's instructions and the JSON format the answer must follow. If the answer is not a valid recipe, Simmer asks once more, with the error, so one import can make two requests.
+Every request also carries Simmer's instructions and the JSON format the answer must follow. If the answer is not a valid recipe, or a translation doesn't have the recipe's groups, ingredients and steps, Simmer asks once more, with the error, so one import or translation can make two requests.
 
 Link imports are fetched by your Simmer server, not by the provider. Simmer only fetches public addresses, so imports can't reach services on your home network. The recipe's photo is downloaded by your server when you save, and is never sent to the provider.
 

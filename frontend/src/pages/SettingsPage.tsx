@@ -8,21 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api, type UnitSystem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { LanguageCode } from "@/lib/languages";
 
-import { LanguageSelect } from "./ImportPage";
 import { PageFrame, Panel } from "./PageFrame";
 
 export function SettingsPage() {
   const { user, refresh } = useAuth();
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [units, setUnits] = useState<UnitSystem>(user?.unit_system ?? "metric");
-  const [language, setLanguage] = useState<LanguageCode | "">(user?.import_language ?? "");
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
 
   const profile = useMutation({
-    mutationFn: () => api.updateMe({ display_name: displayName, unit_system: units, import_language: language }),
+    mutationFn: () => api.updateMe({ display_name: displayName, unit_system: units }),
     onSuccess: () => {
       refresh();
       toast.success("Settings saved");
@@ -68,13 +65,6 @@ export function SettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">How amounts, temperatures and sizes are shown by default. Each recipe page can switch for a single view.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Language of imported recipes</Label>
-              <LanguageSelect value={language} onChange={setLanguage} />
-              <p className="text-muted-foreground text-xs">
-                When importing with AI, Simmer can translate recipes so your collection stays in one language. You can change it for a single import.
-              </p>
             </div>
           </div>
           <Button type="submit" size="sm" disabled={profile.isPending}>

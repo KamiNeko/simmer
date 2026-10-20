@@ -32,6 +32,7 @@ Family recipes end up scattered across bookmarks, screenshots, cookbooks and cha
 | 📖 **Recipes** | Ingredient groups (main, marinade, sauce, ...), step sections, photos, tags, prep and cook times, and a source link. Drag to reorder while editing. |
 | 🔎 **Search** | Full-text search over titles, descriptions, ingredients and tags (`Ctrl+K`), with filters by tag and author and sorting by rating or how often you cook something. |
 | 📥 **Import** | From a link, pasted text or up to six photos. Review everything in the editor before saving. **Tidy up** cleans an existing recipe. |
+| 🌍 **Translations** | Recipes are kept in English; imports in other languages are translated. Share recipes in German or any other language: readers switch the language or open a link in it, no account needed. |
 | ⚖️ **Units and servings** | Metric, US or as written, per person and per recipe. Scale servings up or down. Oven temperatures and pan sizes in the steps convert too. |
 | 👩‍🍳 **Cooking view** | Large text, one highlighted step at a time, ingredient checkboxes, keyboard navigation and a screen that stays on. |
 | ⭐ **Journal** | Rate recipes, log each time you cook them, and keep private notes like "needs more salt" that you tick off once you have worked them in. |
@@ -153,7 +154,7 @@ Clearing the folder matters: an old `simmer.db-wal` or `simmer.db-shm` next to a
 ## Documentation
 
 - [Self-hosting](docs/self-hosting.md): Docker on a Proxmox LXC, reverse proxy examples, HTTPS, updates and troubleshooting.
-- [AI import](docs/ai-import.md): setting up providers and what each import sends to them.
+- [AI import](docs/ai-import.md): setting up providers, translations for sharing, and what each import sends to them.
 - [Architecture](docs/architecture.md): how the code is laid out and how to extend it.
 - [Security](SECURITY.md): how Simmer protects your data and how to report a problem.
 - [Changelog](CHANGELOG.md).
@@ -173,14 +174,14 @@ Clearing the folder matters: an old `simmer.db-wal` or `simmer.db-shm` next to a
 
 | | Visitor | Member | Admin |
 | --- | --- | --- | --- |
-| Browse and search recipes | ✓ | ✓ | ✓ |
+| Browse and search recipes, in any shared language | ✓ | ✓ | ✓ |
 | See average rating and cooked count | ✓ | ✓ | ✓ |
 | Add recipes | | ✓ | ✓ |
 | Edit or delete recipes | | own | all |
 | Rate, log cooking, keep private notes | | ✓ | ✓ |
 | Shopping list, recipe export and import | | ✓ | ✓ |
-| Import recipes and use Tidy up | | ✓ | ✓ |
-| Manage accounts and AI providers, full backup | | | ✓ |
+| Import recipes, use Tidy up, translate a recipe now | | ✓ | ✓ |
+| Manage accounts, AI providers and translation languages, full backup | | | ✓ |
 
 ## Contributing
 

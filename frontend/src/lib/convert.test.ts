@@ -105,3 +105,16 @@ describe("convertText", () => {
     expect(text("Bake at 400°F.", "original")).toBe("Bake at 400°F.");
   });
 });
+
+describe("amounts in other languages", () => {
+  it("uses the language's unit names and decimal comma", () => {
+    expect(formatAmount({ quantity: 2, max: null, unit: "tbsp" }, "de")).toBe("2 EL");
+    expect(formatAmount({ quantity: 1, max: null, unit: "clove" }, "de")).toBe("1 Zehe");
+    expect(formatAmount({ quantity: 3, max: null, unit: "clove" }, "de")).toBe("3 Zehen");
+    expect(formatAmount({ quantity: 1.5, max: null, unit: "kg" }, "de")).toBe("1,5 kg");
+    expect(formatAmount({ quantity: 1.5, max: 2.5, unit: "l" }, "de")).toBe("1,5–2,5 l");
+    // Units without a translation keep their code; English stays as before.
+    expect(formatAmount({ quantity: 1, max: null, unit: "fl_oz" }, "de")).toBe("1 fl oz");
+    expect(formatAmount({ quantity: 1.5, max: null, unit: "kg" })).toBe("1.5 kg");
+  });
+});
