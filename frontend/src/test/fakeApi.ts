@@ -2,7 +2,15 @@ import { vi } from "vitest";
 
 import type { Recipe, User } from "@/lib/api";
 
-export const USER: User = { id: 1, username: "alex", display_name: "Alex", role: "admin", unit_system: "metric", created_at: "2026-01-01T00:00:00Z" };
+export const USER: User = {
+  id: 1,
+  username: "alex",
+  display_name: "Alex",
+  role: "admin",
+  unit_system: "metric",
+  import_language: "",
+  created_at: "2026-01-01T00:00:00Z",
+};
 
 export function recipe(changes: Partial<Recipe> = {}): Recipe {
   return {

@@ -38,6 +38,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(16), default=Role.member)
     unit_system: Mapped[str] = mapped_column(String(16), default="metric")
+    # A language code imports are translated into, or empty to keep the recipe's language.
+    import_language: Mapped[str] = mapped_column(String(16), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     @property

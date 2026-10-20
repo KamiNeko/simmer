@@ -19,6 +19,12 @@ Only admins can do this.
 
 The Simmer server talks to the provider directly, so it needs outbound HTTPS to the provider's API. Each request may take up to 180 seconds. See the [reverse proxy notes](self-hosting.md#reverse-proxy) for the proxy timeout this needs.
 
+## Translating imports
+
+The AI can translate a recipe while importing it, so a collection stays in one language even when recipes come from sites in other languages. Pick a language under **Language of imported recipes** in **Settings**. It is off by default, so recipes keep their language. The import screen shows the chosen language next to the provider and can change it for a single import.
+
+The title, description, group names, ingredient names and notes, steps and tags are translated. Amounts and units stay as they are, and each ingredient's source line in the editor keeps the original wording, so you can check the translation before saving. Imports without AI are never translated, and the draft says so.
+
 ## Without a provider
 
 Links still work: Simmer reads the recipe data most recipe sites embed (schema.org JSON-LD, plus ingredient headings from the WP Recipe Maker and Tasty Recipes plugins) and builds the draft itself, without grouping fixes or densities. Pasted text, photos and Tidy up need a provider. For a link, the import screen also offers **Without AI (page data only)** even when a provider is set up.

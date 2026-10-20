@@ -1,3 +1,5 @@
+import type { LanguageCode } from "./languages";
+
 export type Role = "admin" | "member";
 export type UnitSystem = "metric" | "us" | "original";
 
@@ -7,6 +9,8 @@ export interface User {
   display_name: string;
   role: Role;
   unit_system: UnitSystem;
+  /** The language imports are translated into, or "" to keep the recipe's language. */
+  import_language: LanguageCode | "";
   created_at: string;
 }
 
@@ -128,6 +132,8 @@ export interface ImportRequest {
   photos?: File[];
   /** A provider kind, "none" to skip AI, or undefined for the default. */
   provider?: string;
+  /** A language for the AI to translate the recipe into. */
+  translate_to?: LanguageCode;
 }
 
 export interface ImportResult {
@@ -207,7 +213,7 @@ export const api = {
     request<User>("POST", "/api/auth/setup", data),
   login: (username: string, password: string) => request<User>("POST", "/api/auth/login", { username, password }),
   logout: () => request<void>("POST", "/api/auth/logout"),
-  updateMe: (data: Partial<Pick<User, "display_name" | "unit_system">>) =>
+  updateMe: (data: Partial<Pick<User, "display_name" | "unit_system" | "import_language">>) =>
     request<User>("PATCH", "/api/auth/me", data),
   changePassword: (current_password: string, new_password: string) =>
     request<void>("POST", "/api/auth/password", { current_password, new_password }),
@@ -264,6 +270,7 @@ export const api = {
     const form = new FormData();
     for (const photo of photos) form.append("files", photo);
     if (data.provider) form.append("provider", data.provider);
+    if (data.translate_to) form.append("translate_to", data.translate_to);
     return request<ImportResult>("POST", "/api/import/photos", form);
   },
   tidy: (recipe: RecipeInput, provider?: string) => request<RecipeInput>("POST", "/api/ai/tidy", { recipe, provider }),

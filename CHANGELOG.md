@@ -2,6 +2,12 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- **Translate recipes on import.** Pick a language under **Language of imported recipes** in Settings, and AI imports translate the recipe into it: title, description, ingredients, steps and tags. It is off by default, and the import screen can change it for a single import. Each ingredient keeps its original line as the source, so you can check the translation. See [AI import](docs/ai-import.md#translating-imports).
+
 ## 0.4.0 (2026-10-20)
 
 ### Changed

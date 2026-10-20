@@ -72,6 +72,11 @@ def test_change_password_and_preferences(admin):
     login(admin, "alex", "another-pass")
     updated = admin.patch("/api/auth/me", json={"unit_system": "us"})
     assert updated.json()["unit_system"] == "us"
+    assert updated.json()["import_language"] == ""
+    updated = admin.patch("/api/auth/me", json={"import_language": "de"})
+    assert updated.json()["import_language"] == "de"
+    assert admin.get("/api/auth/me").json()["user"]["import_language"] == "de"
+    assert admin.patch("/api/auth/me", json={"import_language": "Klingon"}).status_code == 422
 
 
 def test_timestamps_are_utc(admin):

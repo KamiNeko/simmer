@@ -254,6 +254,36 @@ describe("importing pages from the browser", () => {
   });
 });
 
+describe("translating imports", () => {
+  const anthropic = { kind: "anthropic", label: "Anthropic", model: "claude", is_default: true, configured: true, key_hint: "", default_model: "claude" };
+  const imported = { recipe: { title: "Apfelkuchen", groups: [], steps: [], tags: [] }, image_url: null, provider: "anthropic", model: "claude", warning: null };
+
+  it("translates into the language from the settings unless changed for this import", async () => {
+    const api = fakeApi({
+      "GET /api/auth/me": { user: { ...USER, import_language: "de" }, needs_setup: false },
+      "GET /api/ai/providers": [anthropic],
+      "POST /api/import": imported,
+    });
+    renderApp("/import");
+    const language = await screen.findByRole("combobox", { name: "Language" });
+    expect(language).toHaveTextContent("Translate to German");
+    await userEvent.type(screen.getByLabelText("Recipe link"), "https://www.chefkoch.de/rezepte/1/");
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await vi.waitFor(() => expect(importBody(api)).toBeDefined());
+    expect(importBody(api)).toMatchObject({ url: "https://www.chefkoch.de/rezepte/1/", translate_to: "de" });
+  });
+
+  it("keeps the recipe's language by default", async () => {
+    const api = fakeApi({ "GET /api/ai/providers": [anthropic], "POST /api/import": imported });
+    renderApp("/import");
+    expect(await screen.findByRole("combobox", { name: "Language" })).toHaveTextContent("Keep the recipe's language");
+    await userEvent.type(screen.getByLabelText("Recipe link"), "https://example.com/");
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await vi.waitFor(() => expect(importBody(api)).toBeDefined());
+    expect(importBody(api).translate_to).toBeUndefined();
+  });
+});
+
 describe("users page", () => {
   it("asks in a dialog before deleting an account", async () => {
     const sam = { ...USER, id: 2, username: "sam", display_name: "Sam", role: "member" };
