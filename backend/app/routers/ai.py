@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from .. import crypto, importer, photos
 from ..deps import DB, AdminUser, CurrentUser
+from ..languages import NAMES as LANGUAGE_NAMES
+from ..languages import LanguageCode
 from ..llm import KINDS, LLMError, Provider, build_provider
 from ..llm.base import Image, ProviderConfig
 from ..llm.recipes import check_connection, import_photos, import_recipe, tidy_recipe
@@ -138,25 +140,30 @@ def test_provider(kind: str, _: AdminUser, db: DB) -> dict[str, str]:
 # Import and tidy up
 
 
-def _import_url(url: str, provider: Provider | None) -> ImportOut:
+def _import_url(url: str, provider: Provider | None, translate_to: str | None) -> ImportOut:
     try:
         body, final_url, _ = importer.fetch(url)
     except importer.FetchError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-    return _import_page(importer.parse_page(body, final_url), provider)
+    return _import_page(importer.parse_page(body, final_url), provider, translate_to)
 
 
-def _import_page(page: importer.PageData, provider: Provider | None) -> ImportOut:
+def _import_page(
+    page: importer.PageData, provider: Provider | None, translate_to: str | None
+) -> ImportOut:
     plain = importer.draft_from_page(page)
     warning = None
     recipe: RecipeIn | None = None
     if provider is not None:
         try:
-            recipe = import_recipe(provider, importer.llm_source(page))
+            recipe = import_recipe(provider, importer.llm_source(page), translate_to)
         except LLMError as exc:
             if plain is None:
                 raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
             warning = f"{exc}. This is the recipe as the page lists it, without AI cleanup."
+    if recipe is None and translate_to:
+        untranslated = f"It isn't translated into {LANGUAGE_NAMES[translate_to]}, which needs AI."
+        warning = f"{warning} {untranslated}" if warning else untranslated
     if recipe is None:
         if plain is None:
             raise HTTPException(
@@ -181,11 +188,12 @@ def import_recipe_draft(data: ImportIn, _: CurrentUser, db: DB) -> ImportOut:
     """Turn a link, a page from the browser or pasted text into a recipe draft for review.
     Nothing is saved."""
     provider = resolve_provider(db, data.provider)
+    translate_to = data.translate_to or None
     if data.html:
         page = importer.parse_page(data.html.encode(), str(data.url) if data.url else "")
-        return _import_page(page, provider)
+        return _import_page(page, provider, translate_to)
     if data.url:
-        return _import_url(str(data.url), provider)
+        return _import_url(str(data.url), provider, translate_to)
     text = (data.text or "").strip()
     if not text:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Paste a link or the recipe text")
@@ -195,7 +203,7 @@ def import_recipe_draft(data: ImportIn, _: CurrentUser, db: DB) -> ImportOut:
             "Importing pasted text needs an AI provider. An admin can add one under AI providers.",
         )
     try:
-        recipe = import_recipe(provider, text)
+        recipe = import_recipe(provider, text, translate_to)
     except LLMError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     return ImportOut(recipe=recipe, provider=provider.kind, model=provider.model)
@@ -207,6 +215,7 @@ def import_photo_draft(
     _: CurrentUser,
     db: DB,
     provider: Annotated[str | None, Form()] = None,
+    translate_to: Annotated[LanguageCode | Literal[""] | None, Form()] = None,
 ) -> ImportOut:
     """Read a recipe from photos, such as cookbook pages, into a draft for review."""
     if not files:
@@ -227,7 +236,7 @@ def import_photo_draft(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
         images.append(Image(data=data, media_type="image/jpeg"))
     try:
-        recipe = import_photos(chosen, images)
+        recipe = import_photos(chosen, images, translate_to or None)
     except LLMError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     return ImportOut(recipe=recipe, provider=chosen.kind, model=chosen.model)

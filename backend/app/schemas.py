@@ -3,6 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
+from .languages import LanguageCode
+
 # SQLite drops the timezone, so stored values come back naive; they are always UTC.
 UTCDateTime = Annotated[
     datetime, AfterValidator(lambda d: d if d.tzinfo else d.replace(tzinfo=UTC))
@@ -22,6 +24,7 @@ class UserOut(ORMModel):
     display_name: str
     role: Literal["admin", "member"]
     unit_system: Literal["metric", "us", "original"]
+    import_language: LanguageCode | Literal[""]
     created_at: UTCDateTime
 
 
@@ -49,6 +52,7 @@ class UserUpdate(BaseModel):
 class MeUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=128)
     unit_system: Literal["metric", "us", "original"] | None = None
+    import_language: LanguageCode | Literal[""] | None = None
 
 
 class PasswordChange(BaseModel):
@@ -274,6 +278,8 @@ class ImportIn(BaseModel):
     html: str | None = Field(default=None, max_length=1_500_000)
     # A provider kind, "none" to skip AI, or empty for the default provider.
     provider: str | None = None
+    # A language to translate the recipe into, or empty to keep its language.
+    translate_to: LanguageCode | Literal[""] | None = None
 
 
 class ImportOut(BaseModel):
