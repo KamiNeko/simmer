@@ -108,6 +108,13 @@ export function RecipeList() {
         <label className="bg-background/60 text-muted-foreground focus-within:border-ring flex h-9 items-center gap-2 rounded-lg border px-3 text-sm">
           <Search className="size-4 shrink-0" />
           <input
+            type="search"
+            name="filter"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            aria-label="Filter this list"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter this list…"

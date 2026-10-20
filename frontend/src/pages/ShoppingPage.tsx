@@ -161,7 +161,7 @@ export function ShoppingPage() {
             ))}
         </ul>
         <form onSubmit={addExtra} className="flex gap-2 py-2">
-          <Input value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Add an item, e.g. kitchen paper" aria-label="Add an item" />
+          <Input name="extra-item" autoComplete="off" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Add an item, e.g. kitchen paper" aria-label="Add an item" />
           <Button type="submit" variant="outline" disabled={!extra.trim()}>
             <Plus /> Add
           </Button>
