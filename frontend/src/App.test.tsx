@@ -343,16 +343,14 @@ describe("lists that show recipes", () => {
     expect(await screen.findByRole("link", { name: "Shopping list" })).toBeInTheDocument();
   });
 
-  it("refresh the meal plan and shopping list after saving a recipe", async () => {
+  it("refresh the shopping list after saving a recipe", async () => {
     const soup = recipe({ title: "Soup" });
     fakeApi({ "GET /api/recipes/soup": soup, "PUT /api/recipes/soup": () => ({ ...soup, title: "Better soup" }) });
     const client = createQueryClient();
-    client.setQueryData(["plan", "2026-10-19"], []);
     renderApp("/recipes/soup/edit", client);
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
     // Earlier tests may have left the same toast up.
     expect(await screen.findAllByText("Recipe saved")).not.toHaveLength(0);
-    expect(client.getQueryState(["plan", "2026-10-19"])?.isInvalidated).toBe(true);
     // The sidebar shows the shopping list, so it is fetched again rather than left stale.
     await vi.waitFor(() => expect(client.getQueryState(["shopping"])?.dataUpdateCount).toBe(2));
   });

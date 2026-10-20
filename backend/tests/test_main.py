@@ -38,7 +38,7 @@ def test_spa_serves_files_and_falls_back_to_index(spa):
     assert spa.get("/assets/app.js").text == "console.log('simmer')"
     assert spa.get("/favicon.svg").text == "<svg/>"
     assert spa.get("/").text == INDEX
-    assert spa.get("/plan/week").text == INDEX
+    assert spa.get("/shopping/week").text == INDEX
     assert spa.get("/recipes/no-such-recipe").text == INDEX
 
 

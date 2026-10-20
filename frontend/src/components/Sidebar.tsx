@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Archive, BookOpen, CalendarDays, Hash, Plus, ShoppingBasket, Sparkles, User as UserIcon, Users } from "lucide-react";
+import { Archive, BookOpen, Hash, Plus, ShoppingBasket, Sparkles, User as UserIcon, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
@@ -60,11 +60,6 @@ export function Sidebar() {
           {user && (
             <NavItem to="/?mine=1" active={mine} icon={<UserIcon />}>
               My Recipes
-            </NavItem>
-          )}
-          {user && (
-            <NavItem to="/plan" active={pathname === "/plan"} icon={<CalendarDays />}>
-              Meal plan
             </NavItem>
           )}
           {user && (

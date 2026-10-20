@@ -95,9 +95,8 @@ export function RecipeEditor() {
     onSuccess: (recipe) => {
       client.invalidateQueries({ queryKey: ["recipes"] });
       client.invalidateQueries({ queryKey: ["tags"] });
-      // The shopping list and meal plan show recipes too.
+      // The shopping list shows recipes too.
       client.invalidateQueries({ queryKey: ["shopping"] });
-      client.invalidateQueries({ queryKey: ["plan"] });
       client.setQueryData(["recipe", recipe.slug], recipe);
       toast.success(slug ? "Recipe saved" : "Recipe added");
       renamedSlugs.delete(recipe.slug);

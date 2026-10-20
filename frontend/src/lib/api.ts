@@ -150,23 +150,6 @@ export interface ShoppingList {
   checked: string[];
 }
 
-export interface PlanEntry {
-  id: number;
-  /** YYYY-MM-DD */
-  day: string;
-  servings: number | null;
-  note: string;
-  recipe: RecipeSummary | null;
-  added_by: { id: number; display_name: string } | null;
-}
-
-export interface PlanEntryInput {
-  day: string;
-  recipe?: string;
-  servings?: number;
-  note?: string;
-}
-
 export interface ImportFileResult {
   imported: { slug: string; title: string }[];
   skipped: string[];
@@ -295,11 +278,6 @@ export const api = {
   shoppingCheck: (key: string, checked: boolean) => request<ShoppingList>("PUT", "/api/shopping/checked", { key, checked }),
   shoppingClear: (checkedOnly = false) => request<ShoppingList>("POST", `/api/shopping/clear${checkedOnly ? "?checked_only=true" : ""}`),
 
-  plan: (start: string, end: string) => request<PlanEntry[]>("GET", `/api/plan?start=${start}&end=${end}`),
-  planAdd: (data: PlanEntryInput) => request<PlanEntry>("POST", "/api/plan", data),
-  planUpdate: (id: number, data: { day?: string; servings?: number; note?: string }) => request<PlanEntry>("PATCH", `/api/plan/${id}`, data),
-  planDelete: (id: number) => request<void>("DELETE", `/api/plan/${id}`),
-  planToShopping: (start: string, end: string) => request<ShoppingList>("POST", "/api/plan/to-shopping", { start, end }),
 
   importFile: (file: File) => {
     const form = new FormData();

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CalendarPlus, ChefHat, Check, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, ShoppingBasket, Timer, Trash2, User, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChefHat, Check, Clock, CookingPot, ExternalLink, Hash, MoreHorizontal, Pencil, ShoppingBasket, Timer, Trash2, User, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -15,7 +15,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CookBar, NotesSection } from "@/components/Journal";
-import { PlanDialog } from "@/components/PlanDialog";
 import { IngredientLine, useHandedOverView, useRecipeView, ViewControls } from "@/components/RecipeView";
 import { RatingBadge } from "@/components/Stars";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,6 @@ export function RecipeDetail() {
   const { user } = useAuth();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [planning, setPlanning] = useState(false);
   const recipe = useRecipe(slug);
   const view = useRecipeView(recipe.data, useHandedOverView(slug));
   const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
@@ -65,9 +63,8 @@ export function RecipeDetail() {
       toast.success("Recipe deleted");
       client.invalidateQueries({ queryKey: ["recipes"] });
       client.invalidateQueries({ queryKey: ["tags"] });
-      // The shopping list and meal plan show recipes too.
+      // The shopping list shows recipes too.
       client.invalidateQueries({ queryKey: ["shopping"] });
-      client.invalidateQueries({ queryKey: ["plan"] });
       // The recipe's page is gone, so don't leave it in history for Back to find.
       navigate(`/${search}`, { replace: true });
     },
@@ -165,14 +162,7 @@ export function RecipeDetail() {
         )}
         {user && (
           <div className="mt-6">
-            <CookBar
-              recipe={r}
-              actions={
-                <Button size="sm" variant="outline" onClick={() => setPlanning(true)} aria-label="Add to meal plan" title="Add to the meal plan">
-                  <CalendarPlus /> Plan
-                </Button>
-              }
-            />
+            <CookBar recipe={r} />
           </div>
         )}
         <hr className="my-6" />
@@ -259,7 +249,6 @@ export function RecipeDetail() {
         {user && <NotesSection slug={r.slug} />}
       </div>
 
-      {user && <PlanDialog open={planning} onOpenChange={setPlanning} recipe={r} servings={view.servings} />}
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -28,7 +28,7 @@ backend/
     units.py              unit names and aliases
     llm/                  AI providers behind one interface, plus the recipe prompts
     routers/              one module per area: auth, users, recipes, journal, ai,
-                          shopping, plan, backup
+                          shopping, backup
   tests/                  pytest, one file per area
 
 frontend/
@@ -76,7 +76,7 @@ All tables are defined in `backend/app/models.py`.
   - **tags** through the `recipe_tags` table. Tags no recipe uses any more are removed.
 - **ratings** (one per user and recipe), **cook_log** (each time someone cooked a recipe) and **comments** (private notes, which can be ticked off as done). Together these are the journal.
 - **shopping_recipes**, **shopping_extras** and **shopping_checks**: each user's shopping list, as recipes with servings, typed-in items and ticked-off lines. The server stores these, and the browser adds up the ingredients (`lib/shopping.ts`).
-- **plan_entries**: the household's meal plan, one recipe or note per entry and day.
+- **plan_entries**: entries of the meal plan that Simmer used to have. Nothing reads or writes them any more; the table stays so existing data survives.
 - **llm_providers**: the configured AI providers, with the encrypted API key and its last 4 characters.
 - **recipe_search**: the FTS5 full-text index (see below). It is not a model.
 
