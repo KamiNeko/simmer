@@ -38,8 +38,26 @@ export function Sidebar() {
   const { user, isAdmin } = useAuth();
   const [params] = useSearchParams();
   const { pathname } = useLocation();
-  const tag = params.get("tag");
+  const selected = params.getAll("tag").map((t) => t.toLowerCase());
   const mine = params.get("mine") === "1";
+  // My Recipes and the tags narrow the list together, so each link toggles itself and keeps the rest.
+  const listLink = (change: (next: URLSearchParams) => void) => {
+    const next = new URLSearchParams();
+    if (mine) next.set("mine", "1");
+    for (const t of params.getAll("tag")) next.append("tag", t);
+    const sort = params.get("sort");
+    if (sort) next.set("sort", sort);
+    change(next);
+    return next.toString() ? `/?${next}` : "/";
+  };
+  const toggleMine = () => listLink((next) => (mine ? next.delete("mine") : next.set("mine", "1")));
+  const toggleTag = (name: string) =>
+    listLink((next) => {
+      const kept = next.getAll("tag").filter((t) => t.toLowerCase() !== name.toLowerCase());
+      next.delete("tag");
+      for (const t of kept) next.append("tag", t);
+      if (kept.length === selected.length) next.append("tag", name);
+    });
   const tags = useQuery({ queryKey: ["tags"], queryFn: api.tags });
   const shopping = useQuery({ queryKey: ["shopping"], queryFn: api.shopping, enabled: !!user });
   const onList = shopping.data ? shopping.data.recipes.length + shopping.data.extras.filter((x) => !x.checked).length : undefined;
@@ -54,11 +72,11 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-6 overflow-y-auto p-3">
         <div className="space-y-0.5">
-          <NavItem to="/" active={!tag && !mine && (pathname === "/" || pathname.startsWith("/recipes"))} icon={<BookOpen />}>
+          <NavItem to="/" active={!selected.length && !mine && (pathname === "/" || pathname.startsWith("/recipes"))} icon={<BookOpen />}>
             All Recipes
           </NavItem>
           {user && (
-            <NavItem to="/?mine=1" active={mine} icon={<UserIcon />}>
+            <NavItem to={toggleMine()} active={mine} icon={<UserIcon />}>
               My Recipes
             </NavItem>
           )}
@@ -80,8 +98,8 @@ export function Sidebar() {
               {tags.data.map((t) => (
                 <NavItem
                   key={t.name}
-                  to={`/?tag=${encodeURIComponent(t.name)}`}
-                  active={tag?.toLowerCase() === t.name.toLowerCase()}
+                  to={toggleTag(t.name)}
+                  active={selected.includes(t.name.toLowerCase())}
                   icon={<Hash />}
                   count={t.count}
                 >

@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 
 from .. import importer, photos, search
@@ -45,19 +46,19 @@ def list_recipes(
     user: OptionalUser,
     db: DB,
     q: str | None = None,
-    tag: str | None = None,
+    tag: Annotated[list[str] | None, Query()] = None,
     author: int | None = None,
     sort: str | None = None,
 ) -> list[RecipeSummary]:
-    """List recipes. Without an explicit sort, searches rank by relevance, else by update."""
+    """List recipes having every given tag. Without a sort, searches rank by relevance."""
     query = select(Recipe).options(*RECIPE_LOAD)
     ranked: list[int] | None = None
     if q and q.strip():
         ranked = search.search_ids(db, q)
         if ranked is not None:
             query = query.where(Recipe.id.in_(ranked))
-    if tag:
-        query = query.where(Recipe.tags.any(func.lower(Tag.name) == tag.lower()))
+    for name in tag or []:
+        query = query.where(Recipe.tags.any(func.lower(Tag.name) == name.lower()))
     if author is not None:
         query = query.where(Recipe.author_id == author)
     order = {

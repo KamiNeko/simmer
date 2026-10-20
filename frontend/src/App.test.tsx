@@ -117,6 +117,21 @@ describe("recipe list", () => {
     expect(api.mock.calls.some(([url]) => String(url).includes("author"))).toBe(false);
   });
 
+  it("narrows My Recipes by several tags at once", async () => {
+    const api = fakeApi({ "GET /api/tags": [{ name: "Dinner", count: 2 }, { name: "Quick", count: 1 }] });
+    renderApp("/?mine=1");
+    await userEvent.click(await screen.findByRole("link", { name: /^Dinner ?2$/ }));
+    await userEvent.click(screen.getByRole("link", { name: /^Quick ?1$/ }));
+    expect(lastNavigation()).toBe("PUSH /?mine=1&tag=Dinner&tag=Quick");
+    expect(await screen.findByRole("heading", { name: "Dinner + Quick" })).toBeInTheDocument();
+    expect(api.mock.calls.map(([url]) => String(url))).toContain("/api/recipes?author=1&tag=Dinner&tag=Quick");
+
+    await userEvent.click(screen.getByRole("link", { name: /^Dinner ?2$/ }));
+    expect(lastNavigation()).toBe("PUSH /?mine=1&tag=Quick");
+    await userEvent.click(screen.getByRole("link", { name: "My Recipes" }));
+    expect(lastNavigation()).toBe("PUSH /?tag=Quick");
+  });
+
   it("says there are no recipes yet when nothing narrows the list", async () => {
     fakeApi({ "GET /api/recipes": [] });
     renderApp("/");

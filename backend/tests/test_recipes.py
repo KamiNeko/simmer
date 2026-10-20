@@ -87,6 +87,7 @@ def test_search_and_filter(admin):
     ]
     assert [r["title"] for r in admin.get("/api/recipes?q=flour").json()] == ["Pancakes"]
     assert [r["title"] for r in admin.get("/api/recipes?tag=breakfast").json()] == ["Pancakes"]
+    assert admin.get("/api/recipes?tag=breakfast&tag=nope").json() == []
     assert [r["title"] for r in admin.get("/api/recipes?sort=title").json()] == [
         "Gochujang Chicken Meal Prep",
         "Pancakes",
@@ -140,3 +141,20 @@ def test_typed_units_are_stored_as_unit_codes(admin):
     created = admin.post("/api/recipes", json=recipe).json()
     units = [i["unit"] for i in created["groups"][0]["ingredients"]]
     assert units == ["cup", "tbsp", "tbsp", "g", "clove", "fl_oz", "sprig"]
+
+
+def test_filters_combine(admin, member):
+    for client, title, tags in [
+        (admin, "Alex soup", ["Dinner", "Quick"]),
+        (admin, "Alex stew", ["Dinner"]),
+        (member, "Sam soup", ["Dinner", "Quick"]),
+    ]:
+        client.post("/api/recipes", json={**SAMPLE_RECIPE, "title": title, "tags": tags})
+    alex = admin.get("/api/auth/me").json()["user"]["id"]
+
+    def titles(query: str) -> list[str]:
+        return sorted(r["title"] for r in admin.get(f"/api/recipes?{query}").json())
+
+    assert titles(f"author={alex}&tag=dinner") == ["Alex soup", "Alex stew"]
+    assert titles(f"author={alex}&tag=dinner&tag=quick") == ["Alex soup"]
+    assert titles("tag=dinner&tag=quick") == ["Alex soup", "Sam soup"]

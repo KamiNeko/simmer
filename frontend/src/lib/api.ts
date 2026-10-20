@@ -219,9 +219,10 @@ export const api = {
     request<User>("PATCH", `/api/users/${id}`, data),
   deleteUser: (id: number) => request<void>("DELETE", `/api/users/${id}`),
 
-  recipes: (params: { q?: string; tag?: string; author?: number; sort?: string }) => {
+  recipes: ({ tags = [], ...params }: { q?: string; tags?: string[]; author?: number; sort?: string }) => {
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, String(value));
+    for (const tag of tags) search.append("tag", tag);
     return request<RecipeSummary[]>("GET", `/api/recipes?${search}`);
   },
   recipe: (slug: string) => request<Recipe>("GET", `/api/recipes/${encodeURIComponent(slug)}`),
