@@ -24,7 +24,7 @@ export function RecipeList() {
   const { slug } = useParams();
   const [params, setParams] = useSearchParams();
   const [filter, setFilter] = useState("");
-  const tag = params.get("tag") ?? undefined;
+  const tags = params.getAll("tag");
   const q = params.get("q") ?? undefined;
   // Visitors have no recipes of their own, so they see them all.
   const mine = params.get("mine") === "1" && !!user;
@@ -32,8 +32,8 @@ export function RecipeList() {
   const sort = sortParam ?? (q ? "relevance" : "updated");
 
   const recipes = useQuery({
-    queryKey: ["recipes", { q, tag, mine, sort: sortParam, userId: user?.id }],
-    queryFn: () => api.recipes({ q, tag, sort: sortParam, author: mine ? user?.id : undefined }),
+    queryKey: ["recipes", { q, tags, mine, sort: sortParam, userId: user?.id }],
+    queryFn: () => api.recipes({ q, tags, sort: sortParam, author: mine ? user?.id : undefined }),
   });
 
   const visible = useMemo(() => {
@@ -42,8 +42,16 @@ export function RecipeList() {
     return needle ? list.filter((r) => `${r.title} ${r.ingredient_preview}`.toLowerCase().includes(needle)) : list;
   }, [recipes.data, filter]);
 
-  const heading = q ? `“${q}”` : tag ? tag : mine ? "My Recipes" : "All Recipes";
-  const subtitle = q ? "Search results" : tag ? "Tagged recipes" : mine ? "Added by you" : "Recipe collection";
+  const heading = q ? `“${q}”` : tags.length ? tags.join(" + ") : mine ? "My Recipes" : "All Recipes";
+  const subtitle = q
+    ? "Search results"
+    : tags.length
+      ? mine
+        ? "Your tagged recipes"
+        : "Tagged recipes"
+      : mine
+        ? "Added by you"
+        : "Recipe collection";
   const query = params.toString() ? `?${params}` : "";
 
   const setSort = (value: string) => {
@@ -113,7 +121,7 @@ export function RecipeList() {
         {recipes.isSuccess && visible.length === 0 && (
           <div className="text-muted-foreground p-6 text-center text-sm">
             <UtensilsCrossed className="mx-auto mb-2 size-6 opacity-60" />
-            {recipes.data.length ? "Nothing matches this filter." : q || tag || mine ? "No recipes match." : "No recipes yet."}
+            {recipes.data.length ? "Nothing matches this filter." : q || tags.length || mine ? "No recipes match." : "No recipes yet."}
           </div>
         )}
         {visible.map((recipe) => {
