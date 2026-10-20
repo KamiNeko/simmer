@@ -99,6 +99,13 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
           <Search className="size-4 shrink-0" />
           <input
             ref={searchRef}
+            type="search"
+            name="q"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            aria-label="Search recipes"
             defaultValue={params.get("q") ?? ""}
             key={params.get("q") ?? ""}
             onKeyDown={(e) => e.key === "Enter" && search(e.currentTarget.value.trim())}
