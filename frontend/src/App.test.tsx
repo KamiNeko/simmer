@@ -359,3 +359,28 @@ describe("failed actions", () => {
     expect(await screen.findByText("The recipe was deleted")).toBeInTheDocument();
   });
 });
+
+describe("about dialog", () => {
+  it("shows the version and the commit the image was built from", async () => {
+    fakeApi({ "GET /api/version": { version: "0.2.0", commit: "827aa0a1b2c3d4e5" } });
+    renderApp("/settings");
+    await userEvent.click(await screen.findByRole("button", { name: "Account menu" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "About Simmer" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "About Simmer" });
+    expect(await within(dialog).findByText("0.2.0")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "827aa0a" })).toHaveAttribute(
+      "href",
+      "https://github.com/KamiNeko/simmer/commit/827aa0a1b2c3d4e5",
+    );
+    expect(within(dialog).getByRole("link", { name: "Report an issue" })).toBeInTheDocument();
+  });
+
+  it("says when the app was built from source", async () => {
+    fakeApi({ "GET /api/version": { version: "0.2.0", commit: null } });
+    renderApp("/settings");
+    await userEvent.click(await screen.findByRole("button", { name: "Account menu" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "About Simmer" }));
+    expect(await screen.findByText("Built from source")).toBeInTheDocument();
+  });
+});

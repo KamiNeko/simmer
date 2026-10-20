@@ -1,7 +1,8 @@
-import { Archive, ChevronRight, LogIn, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun, Users } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Archive, ChevronRight, Info, LogIn, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
+import { AboutDialog } from "@/components/AboutDialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
   const searchRef = useRef<HTMLInputElement>(null);
   const crumb = useCrumb();
   const tag = params.get("tag");
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -145,6 +147,9 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setAboutOpen(true)}>
+                <Info /> About Simmer
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={logout}>
                 <LogOut /> Log out
               </DropdownMenuItem>
@@ -158,6 +163,7 @@ export function Header({ onMenu, menuOpen = false }: { onMenu: () => void; menuO
           </Button>
         )}
       </div>
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </header>
   );
 }
