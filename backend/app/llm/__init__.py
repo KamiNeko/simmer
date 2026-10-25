@@ -1,5 +1,5 @@
-"""AI providers (Anthropic, OpenAI, Google) behind one small interface."""
+"""AI providers (Anthropic, OpenAI, Google, a self-hosted gateway) behind one small interface."""
 
-from .base import KINDS, LLMError, Provider, build_provider
+from .base import KINDS, LLMError, LLMUnavailable, Provider, build_provider
 
-__all__ = ["KINDS", "LLMError", "Provider", "build_provider"]
+__all__ = ["KINDS", "LLMError", "LLMUnavailable", "Provider", "build_provider"]

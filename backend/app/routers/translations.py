@@ -11,7 +11,7 @@ from .. import search
 from ..db import get_db
 from ..deps import DB, AdminUser, CurrentUser
 from ..languages import BASE, NAMES, LanguageCode
-from ..llm import LLMError, Provider
+from ..llm import LLMError, LLMUnavailable, Provider
 from ..llm.recipes import translate_recipe
 from ..models import Recipe, RecipeTranslation
 from ..recipe_service import RECIPE_LOAD, get_recipe_by_slug, recipe_detail
@@ -21,12 +21,14 @@ from ..translations import (
     localize_detail,
     save_translation,
     set_translation_languages,
+    set_translation_provider_kind,
     source_content,
     source_hash,
     translation_languages,
+    translation_provider_kind,
     translations_for,
 )
-from .ai import resolve_provider
+from .ai import configured_kinds, resolve_provider
 
 router = APIRouter(prefix="/api", tags=["translations"])
 log = logging.getLogger(__name__)
@@ -83,9 +85,15 @@ def _needed(
     return pairs
 
 
+def translation_provider(db: Session) -> Provider | None:
+    """The provider chosen for translations, or the default one if that isn't set up."""
+    kind = translation_provider_kind(db)
+    return resolve_provider(db, kind if kind in configured_kinds(db) else None)
+
+
 def _background_provider(db: Session) -> Provider | None:
     try:
-        return resolve_provider(db, None)
+        return translation_provider(db)
     except HTTPException as exc:
         log.warning("Can't translate recipes: %s", exc.detail)
         return None
@@ -106,6 +114,9 @@ def translate_later(recipe_ids: list[int], languages: list[str]) -> None:
             except LLMError as exc:
                 db.rollback()
                 log.warning("Translating recipe %s into %s failed: %s", recipe_id, language, exc)
+                if isinstance(exc, LLMUnavailable):
+                    # Try again later; "Translate now" picks up what's missing.
+                    break
     finally:
         db.close()
 
@@ -120,6 +131,12 @@ def _fill_all(languages: list[str]) -> None:
             try:
                 assert provider is not None
                 translate_one(db, provider, recipe_id, language)
+            except LLMUnavailable as exc:
+                # Every other call would wait for the same timeout; stop and say why.
+                db.rollback()
+                _progress.failed += len(pairs) - _progress.done
+                _progress.error = str(exc)
+                break
             except LLMError as exc:
                 db.rollback()
                 _progress.failed += 1
@@ -133,7 +150,11 @@ def _fill_all(languages: list[str]) -> None:
 def _status(db: Session) -> TranslationStatus:
     languages = translation_languages(db)
     return _progress.model_copy(
-        update={"languages": languages, "missing": len(_needed(db, None, languages))}
+        update={
+            "languages": languages,
+            "provider": translation_provider_kind(db),
+            "missing": len(_needed(db, None, languages)),
+        }
     )
 
 
@@ -151,8 +172,9 @@ def translation_status(_: AdminUser, db: DB) -> TranslationStatus:
 
 @router.put("/admin/translations", response_model=TranslationStatus)
 def save_languages(data: TranslationLanguagesIn, _: AdminUser, db: DB) -> TranslationStatus:
-    """Choose the languages recipes are translated into for sharing."""
+    """Choose the languages recipes are translated into for sharing, and the provider."""
     set_translation_languages(db, data.languages)
+    set_translation_provider_kind(db, data.provider)
     db.commit()
     return _status(db)
 
@@ -163,7 +185,7 @@ def fill_translations(_: AdminUser, db: DB, background: BackgroundTasks) -> Tran
     languages = translation_languages(db)
     if not languages:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a language to translate into")
-    if resolve_provider(db, None) is None:
+    if translation_provider(db) is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "Translating needs an AI provider. Add one under AI providers.",
@@ -181,7 +203,7 @@ def translate_now(slug: str, language: LanguageCode, user: CurrentUser, db: DB) 
     """Translate a recipe into a language now and return it in that language."""
     if language == BASE:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Recipes are kept in {NAMES[BASE]}")
-    provider = resolve_provider(db, None)
+    provider = translation_provider(db)
     if provider is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,

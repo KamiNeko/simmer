@@ -22,7 +22,7 @@ Family recipes end up scattered across bookmarks, screenshots, cookbooks and cha
 
 - 🏠 **Yours.** One small Docker container with a SQLite file. No accounts elsewhere, no tracking, no ads.
 - 👀 **Public to read, private to change.** Anyone you share a link with can read a recipe. Adding and editing needs an account, and your notes and ratings stay yours.
-- ✨ **Imports that tidy up.** Paste a link, some text or photos of a cookbook page. An AI provider of your choice (Anthropic, OpenAI or Google Gemini) sorts the ingredients into groups and steps. It works without AI too, for sites that publish recipe data.
+- ✨ **Imports that tidy up.** Paste a link, some text or photos of a cookbook page. An AI provider of your choice (Anthropic, OpenAI, Google Gemini or a self-hosted LLM gateway) sorts the ingredients into groups and steps. It works without AI too, for sites that publish recipe data.
 - ⚖️ **Grams when you want them.** Recipes keep the units they were written in and convert on the fly, including cups of flour to grams.
 
 ## Features

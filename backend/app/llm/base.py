@@ -6,7 +6,11 @@ KINDS: dict[str, dict[str, str]] = {
     "anthropic": {"label": "Anthropic", "default_model": "claude-opus-5-5"},
     "openai": {"label": "OpenAI", "default_model": "gpt-5"},
     "google": {"label": "Google Gemini", "default_model": "gemini-2.5-flash"},
+    "gateway": {"label": "LLM gateway", "default_model": "gemma4"},
 }
+
+# Kinds that run on a server the admin names, so they need its address.
+NEEDS_URL = {"gateway"}
 
 # Recipes are long but the JSON stays well under this.
 MAX_OUTPUT_TOKENS = 16000
@@ -15,6 +19,10 @@ TIMEOUT_SECONDS = 180
 
 class LLMError(Exception):
     """A provider call failed in a way worth showing to the user."""
+
+
+class LLMUnavailable(LLMError):
+    """The provider couldn't be reached at all, so further calls would fail too."""
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,7 @@ class ProviderConfig:
     kind: str
     model: str
     api_key: str
+    base_url: str = ""
 
 
 def build_provider(config: ProviderConfig) -> Provider:
@@ -55,4 +64,8 @@ def build_provider(config: ProviderConfig) -> Provider:
         from .google_provider import GoogleProvider
 
         return GoogleProvider(config.api_key, config.model)
+    if config.kind == "gateway":
+        from .gateway_provider import GatewayProvider
+
+        return GatewayProvider(config.api_key, config.model, config.base_url)
     raise LLMError(f"Unknown provider {config.kind!r}")

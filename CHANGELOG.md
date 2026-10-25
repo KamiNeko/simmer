@@ -2,6 +2,12 @@
 
 All notable changes to Simmer are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- **Self-hosted LLM gateway.** An admin can add an LLM gateway on their own server (Ollama behind a small task API) as a provider, with its address, key and model, and use it for free imports (not photos) and translations. **Translate with** lets translations use it while imports keep using another default provider. Simmer sends it one request at a time with a 10 minute timeout, and when it is offline a background translation stops after the first failed call. See [AI import](docs/ai-import.md#a-self-hosted-llm-gateway).
+
 ## 0.6.0 (2026-10-20)
 
 ### Added

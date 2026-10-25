@@ -19,6 +19,7 @@ from .models import AppSetting, Recipe, RecipeTranslation
 from .schemas import RecipeOut, RecipeSummary, TranslationContent
 
 LANGUAGES_KEY = "translation_languages"
+PROVIDER_KEY = "translation_provider"
 
 
 def source_content(recipe: Recipe) -> TranslationContent:
@@ -67,6 +68,21 @@ def set_translation_languages(db: Session, languages: list[str]) -> list[str]:
         db.add(setting)
     setting.value = json.dumps(codes)
     return codes
+
+
+def translation_provider_kind(db: Session) -> str | None:
+    """The provider kind the admin chose for translations, or None for the default."""
+    setting = db.get(AppSetting, PROVIDER_KEY)
+    return setting.value if setting and setting.value else None
+
+
+def set_translation_provider_kind(db: Session, kind: str | None) -> None:
+    """Translate with this provider kind, or with the default provider for None."""
+    setting = db.get(AppSetting, PROVIDER_KEY)
+    if setting is None:
+        setting = AppSetting(key=PROVIDER_KEY)
+        db.add(setting)
+    setting.value = kind or ""
 
 
 def translations_for(

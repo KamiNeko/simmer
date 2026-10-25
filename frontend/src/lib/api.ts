@@ -117,7 +117,7 @@ export interface Tag {
   count: number;
 }
 
-export type ProviderKind = "anthropic" | "openai" | "google";
+export type ProviderKind = "anthropic" | "openai" | "google" | "gateway";
 
 export interface AIProvider {
   kind: ProviderKind;
@@ -127,6 +127,9 @@ export interface AIProvider {
   configured: boolean;
   key_hint: string;
   default_model: string;
+  /** The server address, for a provider on the admin's own server. */
+  base_url: string;
+  needs_url: boolean;
 }
 
 export interface ImportRequest {
@@ -155,6 +158,8 @@ export interface Languages {
 
 export interface TranslationStatus {
   languages: LanguageCode[];
+  /** The provider translations use, or null for the default provider. */
+  provider: ProviderKind | null;
   /** Recipe and language pairs without an up-to-date translation. */
   missing: number;
   running: boolean;
@@ -261,8 +266,8 @@ export const api = {
     request<Recipe>("POST", `/api/recipes/${encodeURIComponent(slug)}/translations/${lang}`),
   languages: () => request<Languages>("GET", "/api/languages"),
   translationStatus: () => request<TranslationStatus>("GET", "/api/admin/translations"),
-  saveTranslationLanguages: (languages: LanguageCode[]) =>
-    request<TranslationStatus>("PUT", "/api/admin/translations", { languages }),
+  saveTranslationSettings: (languages: LanguageCode[], provider: ProviderKind | null) =>
+    request<TranslationStatus>("PUT", "/api/admin/translations", { languages, provider }),
   fillTranslations: () => request<TranslationStatus>("POST", "/api/admin/translations/fill"),
   deleteRecipe: (slug: string) => request<void>("DELETE", `/api/recipes/${encodeURIComponent(slug)}`),
   uploadPhoto: (slug: string, file: File) => {
@@ -290,7 +295,7 @@ export const api = {
 
   aiProviders: () => request<AIProvider[]>("GET", "/api/ai/providers"),
   adminProviders: () => request<AIProvider[]>("GET", "/api/admin/ai/providers"),
-  saveProvider: (kind: ProviderKind, data: { api_key?: string; model: string; is_default: boolean }) =>
+  saveProvider: (kind: ProviderKind, data: { api_key?: string; model: string; is_default: boolean; base_url?: string }) =>
     request<AIProvider>("PUT", `/api/admin/ai/providers/${kind}`, data),
   deleteProvider: (kind: ProviderKind) => request<void>("DELETE", `/api/admin/ai/providers/${kind}`),
   testProvider: (kind: ProviderKind) => request<{ status: string }>("POST", `/api/admin/ai/providers/${kind}/test`),

@@ -256,7 +256,7 @@ class Journal(BaseModel):
 
 # AI providers and import
 
-ProviderKind = Literal["anthropic", "openai", "google"]
+ProviderKind = Literal["anthropic", "openai", "google", "gateway"]
 
 
 class ProviderOut(BaseModel):
@@ -267,12 +267,15 @@ class ProviderOut(BaseModel):
     configured: bool
     key_hint: str = ""
     default_model: str
+    base_url: str = ""
+    needs_url: bool = False
 
 
 class ProviderUpdate(BaseModel):
     api_key: str | None = Field(default=None, min_length=8, max_length=400)
     model: str = Field(min_length=1, max_length=128)
     is_default: bool = False
+    base_url: HttpUrl | None = None
 
 
 class ImportIn(BaseModel):
@@ -338,10 +341,14 @@ class LanguagesOut(BaseModel):
 
 class TranslationLanguagesIn(BaseModel):
     languages: list[LanguageCode] = Field(max_length=10)
+    # A provider kind to translate with, or None for the default provider.
+    provider: ProviderKind | None = None
 
 
 class TranslationStatus(BaseModel):
     languages: list[LanguageCode]
+    # The provider kind translations use, or None for the default provider.
+    provider: ProviderKind | None = None
     # Recipe and language pairs without an up-to-date translation.
     missing: int
     running: bool

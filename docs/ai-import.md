@@ -17,7 +17,7 @@ Only admins can do this.
 4. Press **Test connection**. It sends a tiny request and shows the provider's error if the key or model is wrong.
 5. If you set up more than one, pick the default. Members can switch provider on the import screen, and re-import a draft with another provider when a result looks wrong.
 
-The Simmer server talks to the provider directly, so it needs outbound HTTPS to the provider's API. Each request may take up to 180 seconds. See the [reverse proxy notes](self-hosting.md#reverse-proxy) for the proxy timeout this needs.
+The Simmer server talks to the provider directly, so it needs outbound HTTPS to the provider's API. Each request may take up to 180 seconds (10 minutes for a self-hosted gateway). See the [reverse proxy notes](self-hosting.md#reverse-proxy) for the proxy timeout this needs.
 
 ## Recipes are kept in English
 
@@ -29,7 +29,7 @@ Imports without AI can't translate. When the page says it is in another language
 
 To share recipes with people who read another language, an admin picks languages under **Translations for sharing** at the bottom of **AI providers**. From then on:
 
-- New recipes are translated into those languages right after they are saved, in the background, by the default provider. **Translate now** on the same page translates every recipe that has no up-to-date translation yet.
+- New recipes are translated into those languages right after they are saved, in the background, by the provider under **Translate with** (the default provider unless you pick another). **Translate now** on the same page translates every recipe that has no up-to-date translation yet.
 - Readers, including visitors without an account, switch the language with the language button at the top of the page. The recipe list, search, recipe pages and the cooking view then show the translation. Search finds recipes by their translated words, too.
 - **Share** on a recipe page copies a link in the language you pick, such as `/recipes/gochujang-chicken?lang=de`. Whoever opens it reads in that language and keeps it while they browse. Over plain http browsers don't allow copying, so Simmer shows the link to copy by hand.
 - Ingredient amounts come from the English recipe and show in the reader's units (metric unless they choose otherwise), with unit names in German ("2 EL", "1 Zehe") and a decimal comma. Measurements written inside the steps, like "350°F" or "1 cup", are converted to metric by the translation.
@@ -44,7 +44,7 @@ Links still work: Simmer reads the recipe data most recipe sites embed (schema.o
 
 ## What leaves your server
 
-Simmer sends only what the import needs, to the one provider chosen for that import. When languages are chosen under **Translations for sharing**, the text of new and edited recipes also goes to the default provider to be translated. Nothing is sent to a provider when you view recipes, and nothing is sent anywhere when no provider is used.
+Simmer sends only what the import needs, to the one provider chosen for that import. When languages are chosen under **Translations for sharing**, the text of new and edited recipes also goes to the provider chosen for translations. Nothing is sent to a provider when you view recipes, and nothing is sent anywhere when no provider is used.
 
 | Action | Sent to the provider |
 | --- | --- |
@@ -60,6 +60,18 @@ Every request also carries Simmer's instructions and the JSON format the answer 
 Link imports are fetched by your Simmer server, not by the provider. Simmer only fetches public addresses, so imports can't reach services on your home network. The recipe's photo is downloaded by your server when you save, and is never sent to the provider.
 
 Each provider's own terms decide how it handles what it receives.
+
+### A self-hosted LLM gateway
+
+For free imports and translations, Simmer can also use an LLM gateway on your own server: a small HTTP service in front of Ollama that runs named tasks (`POST /v1/task`) with a Bearer key. Simmer sends its own instructions through the gateway's `chat` task, so the gateway needs no Simmer-specific setup.
+
+1. Under **AI providers**, open **LLM gateway**, enter the server address (for example `http://llm.example:8000`), the gateway's API key and the model alias (`gemma4` by default), and save. Unlike the other providers, this one may be on your home network.
+2. Press **Test connection**.
+3. To import with it, make it the default or pick it on the import screen. To translate with it, set **Translate with** under **Translations for sharing**; that works even when a cloud provider stays the default for imports.
+
+Plan for its limits. On a CPU, Gemma 4 E4B translates a recipe in 20 to 70 seconds; a test with 8 recipes into German averaged 45 seconds, kept every group, ingredient and step, and converted °F and inches. Simmer sends the gateway one request at a time and waits up to 10 minutes for an answer. Importing a pasted recipe took about 90 seconds in the same test, for an English and a German recipe, including the translation into English. Expect occasional slips a cloud model wouldn't make (Kümmel became cumin instead of caraway), so check the draft before saving. Simmer fills in text the model leaves as null, since the gateway has no JSON mode. The gateway can't read photos. Behind a reverse proxy, the 10 minute read timeout from the [reverse proxy notes](self-hosting.md#reverse-proxy) matters here; Cloudflare's 100 second limit can cut off a slow import.
+
+When the gateway is offline, Simmer keeps working: recipes stay in English, a background translation stops at the first failed call instead of waiting for each recipe, and **Translate now** finishes the missing ones once the server is back. If **Translate with** names a provider that was removed, translations go to the default provider.
 
 ## Where the API keys are stored
 

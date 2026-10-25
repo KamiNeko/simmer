@@ -9,7 +9,7 @@ from ..deps import DB, AdminUser, CurrentUser
 from ..languages import BASE
 from ..languages import NAMES as LANGUAGE_NAMES
 from ..llm import KINDS, LLMError, Provider, build_provider
-from ..llm.base import Image, ProviderConfig
+from ..llm.base import NEEDS_URL, Image, ProviderConfig
 from ..llm.recipes import check_connection, import_photos, import_recipe, tidy_recipe
 from ..models import LLMProvider
 from ..schemas import ImportIn, ImportOut, ProviderOut, ProviderUpdate, RecipeIn, TidyIn
@@ -34,7 +34,14 @@ def _out(kind: str, row: LLMProvider | None) -> ProviderOut:
         configured=row is not None,
         key_hint=row.key_hint if row else "",
         default_model=info["default_model"],
+        base_url=row.base_url if row else "",
+        needs_url=kind in NEEDS_URL,
     )
+
+
+def configured_kinds(db: Session) -> set[str]:
+    """The provider kinds that are set up."""
+    return set(_configured(db))
 
 
 def _ensure_one_default(db: Session) -> None:
@@ -48,7 +55,9 @@ def _provider(row: LLMProvider) -> Provider:
         api_key = crypto.decrypt(row.api_key_encrypted)
     except crypto.DecryptionError as exc:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, str(exc)) from exc
-    return build_provider(ProviderConfig(kind=row.kind, model=row.model, api_key=api_key))
+    return build_provider(
+        ProviderConfig(kind=row.kind, model=row.model, api_key=api_key, base_url=row.base_url)
+    )
 
 
 def resolve_provider(db: Session, requested: str | None) -> Provider | None:
@@ -92,11 +101,15 @@ def save_provider(kind: str, data: ProviderUpdate, _: AdminUser, db: DB) -> Prov
     """Set up or change a provider's key, model and default flag."""
     kind = _kind(kind)
     row = _configured(db).get(kind)
+    if kind in NEEDS_URL and not data.base_url and not (row and row.base_url):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter the server address")
     if row is None:
         if not data.api_key:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter an API key")
         row = LLMProvider(kind=kind, model=data.model, api_key_encrypted="")
         db.add(row)
+    if data.base_url and kind in NEEDS_URL:
+        row.base_url = str(data.base_url).rstrip("/")
     if data.api_key:
         key = data.api_key.strip()
         row.api_key_encrypted = crypto.encrypt(key)

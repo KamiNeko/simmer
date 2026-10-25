@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type AIProvider, api } from "@/lib/api";
+import { type AIProvider, api, type ProviderKind } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { BASE_LANGUAGE, type LanguageCode, LANGUAGES } from "@/lib/languages";
 
+import { providerParam, ProviderSelect } from "./ImportPage";
 import { PageFrame, Panel } from "./PageFrame";
 
-const KEY_LINKS: Record<AIProvider["kind"], string> = {
+const KEY_LINKS: Partial<Record<AIProvider["kind"], string>> = {
   anthropic: "https://platform.claude.com/settings/keys",
   openai: "https://platform.openai.com/api-keys",
   google: "https://aistudio.google.com/apikey",
@@ -25,6 +26,7 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
   const client = useQueryClient();
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(provider.model);
+  const [baseUrl, setBaseUrl] = useState(provider.base_url);
   const refresh = () => {
     client.invalidateQueries({ queryKey: ["admin-ai-providers"] });
     client.invalidateQueries({ queryKey: ["ai-providers"] });
@@ -32,7 +34,12 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
 
   const save = useMutation({
     mutationFn: (makeDefault: boolean) =>
-      api.saveProvider(provider.kind, { api_key: apiKey.trim() || undefined, model: model.trim(), is_default: makeDefault }),
+      api.saveProvider(provider.kind, {
+        api_key: apiKey.trim() || undefined,
+        model: model.trim(),
+        is_default: makeDefault,
+        base_url: provider.needs_url ? baseUrl.trim() : undefined,
+      }),
     onSuccess: () => {
       setApiKey("");
       refresh();
@@ -63,10 +70,28 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
           <h2 className="font-semibold">{provider.label}</h2>
           {provider.is_default && <Badge>Default</Badge>}
           {!provider.configured && <Badge variant="dashed">Not set up</Badge>}
-          <a href={KEY_LINKS[provider.kind]} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground ml-auto text-xs underline-offset-2 hover:underline">
-            Get an API key
-          </a>
+          {KEY_LINKS[provider.kind] && (
+            <a href={KEY_LINKS[provider.kind]} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground ml-auto text-xs underline-offset-2 hover:underline">
+              Get an API key
+            </a>
+          )}
         </div>
+        {provider.needs_url && (
+          <div className="space-y-2">
+            <Label htmlFor={`${provider.kind}-url`}>Server address</Label>
+            <Input
+              id={`${provider.kind}-url`}
+              type="url"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="http://llm.example:8000"
+              required
+            />
+            <p className="text-muted-foreground text-xs">
+              A self-hosted LLM gateway in front of Ollama. It is free but slow: about a minute per recipe on a CPU, one at a time. It can't read photos.
+            </p>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor={`${provider.kind}-key`}>API key</Label>
@@ -113,7 +138,8 @@ function ProviderCard({ provider }: { provider: AIProvider }) {
 const TRANSLATABLE = (Object.keys(LANGUAGES) as LanguageCode[]).filter((code) => code !== BASE_LANGUAGE);
 
 /** The languages recipes are translated into for sharing, and a button to translate the ones still missing. */
-function TranslationsPanel({ hasAI }: { hasAI: boolean }) {
+function TranslationsPanel({ providers }: { providers: AIProvider[] }) {
+  const hasAI = providers.some((p) => p.configured);
   const client = useQueryClient();
   const status = useQuery({
     queryKey: ["admin-translations"],
@@ -125,7 +151,11 @@ function TranslationsPanel({ hasAI }: { hasAI: boolean }) {
     client.setQueryData(["admin-translations"], data);
     client.invalidateQueries({ queryKey: ["languages"] });
   };
-  const save = useMutation({ mutationFn: api.saveTranslationLanguages, onSuccess: updated });
+  const save = useMutation({
+    mutationFn: ({ languages, provider }: { languages: LanguageCode[]; provider: ProviderKind | null }) =>
+      api.saveTranslationSettings(languages, provider),
+    onSuccess: updated,
+  });
   const fill = useMutation({ mutationFn: api.fillTranslations, onSuccess: updated });
   const data = status.data;
   const running = !!data?.running;
@@ -141,12 +171,17 @@ function TranslationsPanel({ hasAI }: { hasAI: boolean }) {
   if (!data) return null;
 
   const toggle = (code: LanguageCode) =>
-    save.mutate(data.languages.includes(code) ? data.languages.filter((c) => c !== code) : [...data.languages, code]);
+    save.mutate({
+      languages: data.languages.includes(code) ? data.languages.filter((c) => c !== code) : [...data.languages, code],
+      provider: data.provider,
+    });
+  const ready = providers.filter((p) => p.configured);
+  const chosen = data.provider && ready.some((p) => p.kind === data.provider) ? data.provider : "default";
 
   return (
     <Panel
       title="Translations for sharing"
-      description="Recipes are kept in English. Choose languages to share them in: new and edited recipes are then translated by the default AI provider, and readers can switch the language at the top of the page or open a shared link in it."
+      description="Recipes are kept in English. Choose languages to share them in: new and edited recipes are then translated by the provider chosen below, and readers can switch the language at the top of the page or open a shared link in it."
     >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {TRANSLATABLE.map((code) => (
@@ -156,6 +191,18 @@ function TranslationsPanel({ hasAI }: { hasAI: boolean }) {
           </label>
         ))}
       </div>
+      {data.languages.length > 0 && ready.length > 1 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <Label htmlFor="translation-provider">Translate with</Label>
+          <ProviderSelect
+            providers={ready}
+            value={chosen}
+            onChange={(value) => save.mutate({ languages: data.languages, provider: (providerParam(value) as ProviderKind | undefined) ?? null })}
+            allowNone={false}
+            className="w-auto min-w-56"
+          />
+        </div>
+      )}
       {data.languages.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 border-t pt-4 text-sm">
           <Languages className="text-muted-foreground size-4" />
@@ -195,8 +242,8 @@ export function AIProvidersPage() {
       >
         <p className="text-muted-foreground text-sm">Without a provider, links still import from the page's recipe data, just without grouping fixes and densities.</p>
       </Panel>
-      {providers.data?.map((p) => <ProviderCard key={`${p.kind}-${p.configured}-${p.model}`} provider={p} />)}
-      {providers.data && <TranslationsPanel hasAI={providers.data.some((p) => p.configured)} />}
+      {providers.data?.map((p) => <ProviderCard key={`${p.kind}-${p.configured}-${p.model}-${p.base_url}`} provider={p} />)}
+      {providers.data && <TranslationsPanel providers={providers.data} />}
     </PageFrame>
   );
 }

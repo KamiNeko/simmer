@@ -231,6 +231,8 @@ class LLMProvider(Base):
     model: Mapped[str] = mapped_column(String(128))
     api_key_encrypted: Mapped[str] = mapped_column(Text)
     key_hint: Mapped[str] = mapped_column(String(8), default="")
+    # The server address, for providers that run on the admin's own server.
+    base_url: Mapped[str] = mapped_column(String(400), default="")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
