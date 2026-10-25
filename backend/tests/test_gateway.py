@@ -24,7 +24,10 @@ GATEWAY = {
 def _gateway(handler):
     provider = build_provider(
         ProviderConfig(
-            kind="gateway", model="gemma4", api_key="gateway-key", base_url="http://llm.example:8000/"
+            kind="gateway",
+            model="gemma4",
+            api_key="gateway-key",
+            base_url="http://llm.example:8000/",
         )
     )
     provider._client = httpx.Client(
@@ -75,7 +78,10 @@ def test_gateway_errors(response, error):
 @pytest.mark.parametrize(
     ("exc", "error"),
     [
-        (httpx.ConnectError("refused"), "Couldn't reach the LLM gateway at http://llm.example:8000"),
+        (
+            httpx.ConnectError("refused"),
+            "Couldn't reach the LLM gateway at http://llm.example:8000",
+        ),
         (httpx.ConnectTimeout("no route"), "Couldn't reach the LLM gateway"),
         (httpx.ReadTimeout("slow"), "didn't answer in time"),
     ],
